@@ -1,0 +1,893 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Precios de hacienda · Inteligencia de mercado ganadero (beta)</title>
+<meta name="description" content="Precios de hacienda (beta): precios, proyecciones y señales semanales de la hacienda del Mercado Agroganadero de Cañuelas, con datos públicos. Snapshot semanal cargado a mano.">
+<script>
+/* =========================================================================
+   SNAPSHOT DE DATOS — lo único que hay que editar para actualizar el demo
+   -------------------------------------------------------------------------
+   Esta página no se conecta a ninguna fuente en vivo ni tiene backend. Cada
+   semana se reemplazan a mano los valores de este bloque y la página recalcula
+   el resto: pesos constantes, dólares, gráficos, semáforo y simulador.
+   Si falta un dato o hay una inconsistencia, la página lo avisa arriba.
+
+   Para pasar a una semana nueva:
+   1. semana / cargado: lunes y viernes de la semana de mercado, fecha de carga.
+   2. dolar.semanal y cada "serie": agregar el valor de la semana al final y
+      sacar el primero (para mantener 26 semanas). Todos con el mismo largo.
+   3. Categorías sin serie: precio, var_sem y vs26_real.
+   4. p4 / p12: pegar la salida del modelo estacional (corre fuera de esta
+      página), en pesos constantes del mes_base.
+   5. ipc / rem / dolar.rem: cuando INDEC publica un IPC, pasar ese mes de
+      "rem" a "ipc". Si cambia mes_base, las proyecciones tienen que venir en
+      pesos del nuevo mes base.
+   6. general, relaciones y alertas: valores y textos de la semana.
+
+   Procedencia de este snapshot (semana 12-16/10/2026): la serie del
+   novillito, el dólar semanal y la inflación mensual se reconstruyeron del
+   gráfico del snapshot original (error menor a 0,3%); el resto se copió tal
+   cual de sus tablas.
+   ========================================================================= */
+const SNAPSHOT = {
+  semana: { desde: '2026-10-12', hasta: '2026-10-16' },  // semana de mercado (lunes a viernes)
+  cargado: '2026-10-22',                                  // fecha en que se cargó a mano
+
+  mes_base: '2026-09',  // "$ constantes" = pesos de este mes
+
+  // Inflación mensual en %. ipc = dato publicado por INDEC; rem = expectativa del
+  // REM (BCRA) para meses sin dato. Tiene que cubrir desde el mes de la semana más
+  // vieja de la serie hasta el mes de la proyección más lejana.
+  ipc: { '2026-05': 2.1, '2026-06': 1.9, '2026-07': 2.1, '2026-08': 1.7, '2026-09': 1.9 },
+  rem: { '2026-10': 1.7, '2026-11': 1.6, '2026-12': 1.8, '2027-01': 1.6 },
+
+  // Dólar oficial mayorista A3500 ($ por USD).
+  dolar: {
+    // una entrada por semana, alineada con las series; la última es la semana del snapshot
+    semanal: [1384, 1400, 1393, 1393, 1396, 1411, 1433, 1438, 1446, 1472, 1487, 1491, 1479,
+              1485, 1496, 1497, 1493, 1497, 1513, 1510, 1512, 1511, 1518, 1524, 1519, 1515],
+    // dólar esperado por el REM para el mes de cada proyección
+    rem: { '2026-11': 1550, '2027-01': 1614 }
+  },
+
+  // Indicadores generales de la semana (MAG)
+  general: {
+    precio_promedio: 3953,   // $/kg, promedio general de la semana
+    var_sem: 0.036,          // variación semanal nominal
+    ingreso_cab: 19228,      // cabezas ingresadas en la semana
+    ingreso_prom8: 16829,    // promedio de las 8 semanas previas
+    ingreso_semanal_miles: [15.4, 17.6, 19.5, 17.0, 16.1, 14.7, 18.6, 19.228], // últimas 8, la última = snapshot
+    part_vacas: 0.32, part_vacas_prom52: 0.36
+  },
+
+  // Categorías. Precios nominales en $/kg vivo (importe / kilos del MAG).
+  // - Con "serie" (precio semanal alineado con dolar.semanal) la página calcula precio,
+  //   variación semanal, base de 3 semanas y comparación con 26 semanas.
+  // - Sin serie, cargar precio, var_sem y vs26_real tal como los informa el modelo.
+  // Proyecciones (p4 = 4 semanas, p12 = 12 semanas) en $ constantes del mes_base:
+  //   central, p10 y p90 (rango probable 80%), p_suba = probabilidad de que el precio
+  //   real suba, estacional = efecto estacional informado por el modelo (solo hace falta
+  //   sin serie; con serie se muestra el implícito, central / base - 1).
+  categorias: [
+    { id: 'novillo', nombre: 'Novillo', precio: 4262, var_sem: 0.025, vs26_real: -0.058,
+      p4: { central: 4423, p10: 4018, p90: 4780, p_suba: 0.73, estacional: 0.07 } },
+    { id: 'novillito', nombre: 'Novillito',
+      serie: [4790, 4691, 4663, 4596, 4613, 4568, 4441, 4729, 4607, 4588, 4674, 4641, 4603,
+              4820, 4664, 4860, 4679, 4607, 4672, 4577, 4571, 4497, 4527, 4499, 4510, 4533],
+      p4:  { central: 4753.7, p10: 4324.9, p90: 5154.8, p_suba: 0.79 },
+      p12: { central: 5037.5, p10: 4252.8, p90: 5855.0 } },
+    { id: 'vaquillona', nombre: 'Vaquillona', precio: 4221, var_sem: -0.001, vs26_real: -0.073,
+      p4: { central: 4464, p10: 4050, p90: 4800, p_suba: 0.83, estacional: 0.06 } },
+    { id: 'vaca', nombre: 'Vaca', precio: 3214, var_sem: 0.027, vs26_real: 0.071,
+      p4: { central: 3287, p10: 2873, p90: 3623, p_suba: 0.69, estacional: 0.05 } }
+  ],
+  categoria_grafico: 'novillito',  // la del gráfico principal (tiene que tener serie)
+  categoria_kpi: 'novillo',        // la de la tarjeta de arriba
+
+  // Relaciones de precios: valor de hoy y percentil dentro de su historia.
+  // tono: 'alerta' | 'favorable' | 'neutral'
+  relaciones_desde: 2019,
+  relaciones: [
+    { nombre: 'Ternero / novillo', valor: 1.47, dec: 2, percentil: 93, tono: 'alerta',
+      lectura: 'Reposición cara: el margen de engorde se achica', fuente: 'remate ROSGAN 09/09/2026' },
+    { nombre: 'Kg maíz por kg de novillo', valor: 14.9, dec: 1, percentil: 90, tono: 'favorable',
+      lectura: 'Engordar a corral rinde por encima de lo habitual' },
+    { nombre: 'Vaca / novillo', valor: 0.75, dec: 2, percentil: 76, tono: 'neutral',
+      lectura: 'Alta respecto de su historia' },
+    { nombre: 'Novillo en USD/kg', valor: 2.81, dec: 2, prefijo: 'USD ', percentil: 90, tono: 'neutral',
+      lectura: 'Alta respecto de su historia' }
+  ],
+
+  // Alertas de texto (la de mercado se arma sola a partir del semáforo)
+  alertas: [
+    { tipo: 'FEEDLOT', tono: 'neutral', texto: 'Stock en feedlot: 2,07 millones de cabezas (SENASA, 07/10/2026). Índice de reposición de septiembre: 0,94 — salen más animales de los que entran: oferta de gordo alta en el corto plazo.' },
+    { tipo: 'CLIMA', tono: 'neutral', texto: 'El Niño fuerte (ONI 2,2, trimestre centrado en agosto): bajo riesgo de liquidación por sequía; favorece la retención.' },
+    { tipo: 'REPOSICIÓN', tono: 'alerta', texto: 'Ternero/novillo en 1,47 (percentil 93 desde 2019): reposición cara, revisar márgenes antes de comprar terneros.' }
+  ],
+
+  modelo: {
+    descripcion: 'Modelo estacional sobre precio real, promedio de 3 semanas',
+    backtest: { desde: 2022, categoria: 'novillito', horizonte: 4,
+                error_modelo: 0.063, error_igual_hoy: 0.067, acierto_direccion: 0.65 },
+    umbral_var: 0.03,   // semáforo: variación real esperada mínima
+    umbral_prob: 0.60   // semáforo: probabilidad mínima
+  },
+
+  fuentes: {
+    resumen: 'MAG, ROSGAN, BCRA, INDEC, SENASA, BCR, NOAA',
+    detalle: 'Precios: Mercado Agroganadero (precios por categoría, importe/kilos; no es el INMAG). Reposición: ROSGAN. Feedlot: SENASA. Maíz: Cámara Arbitral BCR. Clima: NOAA. Macro: BCRA, INDEC y REM. Las proyecciones son orientativas y no constituyen recomendación de inversión.'
+  }
+};
+</script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<style>
+:root{
+  --bg:#F3F5F2;--card:#FFFFFF;--ink:#17211B;--ink2:#33403A;--muted:#55615A;
+  --line:#DCE2DD;--line2:#C9D1CB;--grid:#E6EAE7;--soft:#EEF0EE;
+  --green:#2E6A4C;--green-d:#1E4A34;--green-l:#E3EEE7;--wash:#D3E3D9;
+  --amber:#B7862E;--amber-bg:#F2D58A;--amber-ink:#4A3500;--amber-soft:#FBEFD5;--amber-text:#5C3D00;
+  --gray-mark:#7C8A82;--red-soft:#F8E3DE;--red-ink:#6B2416;
+  --d-bg:#17211B;--d-panel:#222E27;--d-line:#3D4A42;--d-text:#F3F5F2;--d-muted:#B9C4BD;--d-accent:#9FD3B4;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;--sans:'IBM Plex Sans',system-ui,sans-serif;--display:'Archivo',sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans)}
+a{color:var(--green)}a:hover{color:var(--green-d)}
+button,input,select{font-family:inherit}
+.wrap{max-width:1320px;margin:0 auto;padding:28px 24px 56px;display:flex;flex-direction:column;gap:20px}
+.back{font-size:13px;color:var(--muted);text-decoration:none}
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;padding-bottom:18px;border-bottom:2px solid var(--ink)}
+.tags{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.brand{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tag{font-size:12px;font-weight:600;padding:3px 8px;border-radius:4px;background:var(--green-l);color:var(--green-d)}
+.tag.dark{background:var(--ink);color:#fff;font-weight:700}
+.tag.fresh{background:var(--soft);color:var(--ink2)}
+.tag.stale{background:var(--amber-soft);color:var(--amber-text)}
+h1{margin:0;font-family:var(--display);font-weight:800;font-size:36px;line-height:1.05;letter-spacing:-.01em}
+h2{margin:0;font-family:var(--display);font-size:20px;font-weight:700}
+.sub{font-size:14px;color:var(--muted)}
+.units{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.units .cap{font-size:12px;color:var(--muted);max-width:300px}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:6px;overflow:hidden;background:#fff}
+.seg button{padding:10px 14px;min-height:44px;border:0;font-size:13px;font-weight:600;cursor:pointer;background:#fff;color:var(--ink2)}
+.seg button+button{border-left:1px solid var(--line2)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.seg button:disabled{color:#A3ADA7;cursor:not-allowed;background:#F7F8F7}
+.seg button:focus-visible,.catbtn:focus-visible,svg:focus-visible,summary:focus-visible{outline:3px solid var(--green);outline-offset:2px}
+.seg button:focus-visible{outline-offset:-3px}
+.banner{display:flex;gap:12px;align-items:flex-start;padding:12px 16px;border-radius:8px;background:var(--amber-soft);color:var(--ink);font-size:14px;line-height:1.45}
+.banner .k{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--amber-text);padding-top:2px;white-space:nowrap}
+.problems{padding:12px 16px;border-radius:8px;background:var(--red-soft);color:var(--red-ink);font-size:14px}
+.problems ul{margin:6px 0 0;padding-left:18px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.kpi{padding:18px;gap:6px}
+.kpi .lab{font-size:13px;color:var(--muted);font-weight:500}
+.kpi .val{font-family:var(--mono);font-size:30px;font-weight:500}
+.kpi .val small{font-size:15px;color:var(--muted)}
+.kpi .delta{font-size:13px;font-weight:600;color:var(--ink2)}
+.up{color:var(--green)!important}.warn{color:var(--amber-text)!important}
+.row{display:flex;flex-wrap:wrap;gap:14px}
+.head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px}
+.note{margin:0;font-size:13px;color:var(--muted);line-height:1.45}
+.fine{margin:0;font-size:12px;color:var(--muted);line-height:1.45}
+.mono,.num{font-family:var(--mono)}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* gráfico */
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto;touch-action:pan-y}
+.chart .ax{font-family:var(--mono);font-size:11px;fill:var(--muted);font-variant-numeric:tabular-nums}
+.chart .ax.ink{fill:var(--ink)}
+.chart .lbl{font-family:var(--sans);font-size:12px;font-weight:600;fill:var(--ink)}
+.tip{position:absolute;top:0;left:0;pointer-events:none;background:#fff;border:1px solid var(--line2);border-radius:8px;padding:8px 10px;box-shadow:0 6px 18px rgba(23,33,27,.12);font-size:12px;min-width:160px;max-width:240px;opacity:0;transition:opacity .08s}
+.tip.on{opacity:1}
+.tip .d{color:var(--muted)}
+.tip .v{font-family:var(--mono);font-size:16px;font-weight:500;color:var(--ink);margin:2px 0}
+.tip .v span{font-size:12px;color:var(--muted)}
+.tip .n{color:var(--ink2)}
+.legend{display:flex;flex-wrap:wrap;gap:18px;font-size:13px;color:var(--ink2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{display:inline-block;width:18px;height:2px;background:var(--ink)}
+.sw.proj{background:repeating-linear-gradient(90deg,var(--green) 0 6px,transparent 6px 10px)}
+.sw.band{height:10px;background:var(--wash)}
+details{font-size:13px;color:var(--ink2)}
+summary{cursor:pointer;color:var(--green);font-weight:600;min-height:32px;display:flex;align-items:center}
+.datatbl{border-collapse:collapse;font-size:12px;margin-top:6px}
+.datatbl th,.datatbl td{padding:4px 12px 4px 0;border-bottom:1px solid var(--grid);text-align:left}
+.datatbl td.num{text-align:right}
+/* relaciones */
+.rel{display:flex;flex-direction:column;gap:6px}
+.rel .t{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.rel .t b{font-weight:600}
+.meter{position:relative;height:10px;border-radius:5px;background:var(--grid)}
+.meter i{position:absolute;left:0;top:0;bottom:0;border-radius:5px}
+/* semáforo */
+.scroll{overflow-x:auto}
+.tbl{width:100%;min-width:1000px;border-collapse:collapse;font-size:14px}
+.tbl th{font-family:var(--sans);padding:10px 12px;border-bottom:1px solid var(--line2);font-weight:600;text-align:left;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em;vertical-align:bottom}
+.tbl th.num{text-align:right}
+.tbl td{padding:12px;border-bottom:1px solid var(--grid);vertical-align:middle}
+.tbl tr.sel td{background:#F2F7F3}
+.tbl tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--green)}
+.tbl .rng{font-size:12px;color:var(--muted);font-weight:400}
+.tbl .why{color:var(--ink2);font-size:13px;line-height:1.4;min-width:220px}
+.catbtn{border:0;background:none;padding:6px 0;min-height:36px;font-size:14px;font-weight:600;color:var(--ink);cursor:pointer;text-align:left;text-decoration:underline;text-decoration-color:var(--line2);text-underline-offset:4px}
+.catbtn:hover{text-decoration-color:var(--green)}
+.barcell{display:flex;align-items:center;gap:10px}
+.barcell svg{flex:none}
+.chip{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.chip.esperar{background:var(--amber-bg);color:var(--amber-ink)}
+.chip.vender{background:var(--wash);color:var(--green-d)}
+.chip.neutral,.chip.na{background:var(--soft);color:var(--ink2)}
+.keys{display:flex;flex-wrap:wrap;gap:16px;font-size:12px;color:var(--muted);align-items:center}
+.keys span{display:inline-flex;align-items:center;gap:6px}
+/* análisis */
+.toolbar{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.toolbar .ctl{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end}
+.toolbar .c{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted)}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.steps li{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:2px 12px;padding:10px 0;border-bottom:1px solid var(--grid)}
+.steps li:last-child{border-bottom:0}
+.steps .n{grid-row:span 2;width:22px;height:22px;border-radius:50%;background:var(--soft);color:var(--ink2);font:500 11px var(--mono);display:flex;align-items:center;justify-content:center;margin-top:1px}
+.steps li.key .n{background:var(--ink);color:#fff}
+.steps .l{font-size:14px;font-weight:600}
+.steps .v{font-family:var(--mono);font-size:14px;text-align:right;white-space:nowrap}
+.steps li.key .v{font-size:16px;font-weight:500}
+.steps .v .chip{font-family:var(--sans)}
+.steps .h{grid-column:2 / 4;font-size:12px;color:var(--muted);line-height:1.45}
+.track{padding:12px 14px;border-radius:8px;background:var(--soft);font-size:13px;color:var(--ink2);line-height:1.5}
+.track b{color:var(--ink)}
+/* simulador */
+.sim{background:var(--d-bg);color:var(--d-text);border-color:var(--d-bg);gap:14px}
+.sim .note,.sim .fine{color:var(--d-muted)}
+.inputs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.inputs label{display:flex;flex-direction:column;justify-content:flex-end;gap:4px;font-size:12px;color:var(--d-muted)}
+.inputs label em{font-style:normal;color:#8F9C94}
+.inputs input{padding:10px;border-radius:6px;border:1px solid var(--d-line);background:var(--d-panel);color:var(--d-text);font-family:var(--mono);font-size:15px;min-height:44px;width:100%}
+.inputs input:focus-visible{outline:3px solid var(--d-accent);outline-offset:1px}
+.hoy{display:flex;flex-direction:column;gap:2px;padding-top:10px;border-top:1px solid var(--d-line)}
+.hoy .k{font-size:12px;color:var(--d-muted)}
+.hoy .x{font-family:var(--mono);font-size:26px}
+.esc{width:100%;border-collapse:collapse;font-size:13px}
+.esc caption{text-align:left;font-size:12px;color:var(--d-muted);padding-bottom:4px}
+.esc th{font-family:var(--sans);font-size:11px;font-weight:600;color:var(--d-muted);text-transform:uppercase;letter-spacing:.05em;text-align:left;padding:6px 6px 6px 0;border-bottom:1px solid var(--d-line)}
+.esc th.num{text-align:right}
+.esc td{padding:8px 6px 8px 0;border-bottom:1px solid #2C3831}
+.esc tr.c td{color:var(--d-accent);font-weight:600}
+.esc tr.ref td{color:var(--d-muted)}
+.pos{color:var(--d-accent)}.neg{color:#F2B8A8}
+.eq{padding:12px;border-radius:8px;background:var(--d-panel);font-size:13px;color:#E1E7E3;line-height:1.5;display:flex;flex-direction:column;gap:8px}
+.eq strong{color:var(--d-text)}
+.eq .keys{color:var(--d-muted)}
+/* oferta y alertas */
+.cols{position:relative;display:flex;align-items:flex-end;gap:6px;height:170px;padding:8px 70px 0 0;border-bottom:1px solid var(--line2)}
+.cols .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;position:relative;z-index:1}
+.cols .cv{font-size:11px;font-family:var(--mono);color:var(--muted);background:#fff;padding:0 2px}
+.cols .cb{width:100%;max-width:24px;background:var(--gray-mark);border-radius:4px 4px 0 0}
+.cols .col.last .cv{color:var(--ink);font-weight:500}
+.cols .col.last .cb{background:var(--ink)}
+.cols .ref{position:absolute;left:0;right:0;border-top:1px dashed var(--muted);pointer-events:none}
+.cols .ref span{position:absolute;right:0;top:-8px;font-size:10px;line-height:14px;font-family:var(--mono);color:var(--muted);background:#fff;padding-left:4px;width:66px;text-align:right}
+.alerts{display:flex;flex-direction:column;gap:10px}
+.alert{display:flex;gap:10px;padding:12px;border-radius:8px;background:var(--soft);font-size:14px;line-height:1.45}
+.alert .k{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink2);padding-top:2px;min-width:86px}
+.alert.alerta{background:var(--amber-soft)}.alert.alerta .k{color:var(--amber-text)}
+footer{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px solid var(--line);line-height:1.5}
+footer b{font-weight:600;color:var(--ink2)}
+@media (max-width:640px){
+  .wrap{padding:20px 16px 48px}
+  h1{font-size:28px}
+  .inputs{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .steps li{grid-template-columns:26px minmax(0,1fr)}
+  .steps .v{grid-column:2;text-align:left}
+  .steps .h{grid-column:2}
+  .alert{flex-direction:column;gap:4px}
+  /* semáforo como tarjetas en pantallas angostas */
+  .tbl{min-width:0}
+  .tbl thead{display:none}
+  .tbl,.tbl tbody,.tbl td{display:block}
+  .tbl tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-auto-flow:dense;gap:8px 12px;padding:14px 0;border-bottom:1px solid var(--line2)}
+  .tbl td{padding:0;border:0;min-width:0}
+  .tbl td.num{text-align:left}
+  .tbl td::before{content:attr(data-l);display:block;font-family:var(--sans);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;white-space:normal}
+  .barcell svg{flex:1 1 auto;max-width:200px;height:auto}
+  .tbl td.full{grid-column:1 / -1}
+  .tbl tr.sel{background:#F2F7F3;box-shadow:inset 3px 0 0 var(--green);padding-left:12px;padding-right:8px}
+  .tbl tr.sel td,.tbl tr.sel td:first-child{background:none;box-shadow:none}
+  .tbl .why{min-width:0}
+}
+@media print{
+  body{background:#fff}
+  .back,.units .seg,.toolbar .ctl,details{display:none!important}
+  .card{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<a class="back" href="../../../hacienda/index.html">&larr; Volver al producto</a>
+
+<header class="top">
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div class="tags">
+      <span class="brand">Precios de hacienda</span><span class="tag dark">BETA</span>
+      <span class="tag">Mercado Agroganadero de Cañuelas · datos semanales</span>
+      <span class="tag fresh" id="frescura">Snapshot manual</span>
+    </div>
+    <h1>Inteligencia de mercado ganadero</h1>
+    <div class="sub" id="semana"></div>
+  </div>
+  <div class="units">
+    <span style="font-size:12px;color:var(--muted)">Expresar valores en</span>
+    <div class="seg" role="group" aria-label="Unidad de los valores">
+      <button type="button" data-u="nom">$ corrientes</button>
+      <button type="button" data-u="real">$ constantes</button>
+      <button type="button" data-u="usd">USD</button>
+    </div>
+    <span class="cap" id="u-cap"></span>
+  </div>
+</header>
+
+<div class="banner" id="aviso" role="note" hidden></div>
+<div class="problems" id="problemas" role="alert" hidden></div>
+
+<section class="kpis" aria-label="Indicadores principales" id="kpis"></section>
+
+<section class="row">
+  <div class="card" style="flex:999 1 560px">
+    <div class="head">
+      <h2 id="g-titulo">Precio y proyección</h2>
+      <span class="note">por kg vivo · rango estimado 80%</span>
+    </div>
+    <div class="chart" id="graf"></div>
+    <div class="legend">
+      <span><i class="sw"></i>Precio observado</span>
+      <span><i class="sw proj"></i>Proyección central</span>
+      <span><i class="sw band"></i>Rango estimado (80%)</span>
+    </div>
+    <p class="fine">La zona sombreada es el rango estimado por el modelo: el precio real puede quedar fuera. Pasá el cursor o usá las flechas del teclado sobre el gráfico para ver cada semana. Cómo sale la proyección: <a href="#calculo">paso a paso, más abajo</a>.</p>
+    <details id="g-datos"><summary>Ver los datos del gráfico</summary><div id="g-tabla"></div></details>
+  </div>
+  <div class="card" style="flex:1 1 320px;gap:18px">
+    <h2>Relaciones de precios</h2>
+    <p class="note" id="rel-sub"></p>
+    <div id="rel" style="display:flex;flex-direction:column;gap:18px"></div>
+  </div>
+</section>
+
+<section class="card" style="gap:14px">
+  <div class="head">
+    <h2>Semáforo por categoría</h2>
+    <span class="note" id="sem-sub"></span>
+  </div>
+  <div class="scroll"><table class="tbl" id="sem"></table></div>
+  <div class="keys" id="sem-keys"></div>
+  <p class="fine" id="sem-regla"></p>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:14px" id="calculo">
+  <div class="toolbar">
+    <h2>Proyección paso a paso y simulador</h2>
+    <div class="ctl">
+      <div class="c"><span>Categoría</span><div class="seg" role="group" aria-label="Categoría" id="ctl-cat"></div></div>
+      <div class="c"><span>Horizonte</span><div class="seg" role="group" aria-label="Horizonte" id="ctl-h">
+        <button type="button" data-h="4">4 semanas</button><button type="button" data-h="12">12 semanas</button>
+      </div></div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="card" style="flex:1 1 440px">
+      <div class="head"><h2 id="calc-titulo" style="font-size:18px">Cómo se arma la proyección</h2></div>
+      <p class="note" id="calc-sub"></p>
+      <ol class="steps" id="calc"></ol>
+      <div class="track" id="calc-track"></div>
+    </div>
+    <div class="card sim" style="flex:1 1 400px">
+      <h2>Simulador de venta</h2>
+      <p class="note" id="sim-sub"></p>
+      <div class="inputs">
+        <label>Cabezas<input type="number" id="i_cab" value="50" min="0" step="1" inputmode="numeric"></label>
+        <label>Kg promedio hoy<input type="number" id="i_kg" value="380" min="0" step="5" inputmode="decimal"></label>
+        <label>Ganancia kg/día<input type="number" id="i_gdp" value="0.7" min="0" step="0.1" inputmode="decimal"></label>
+        <label><span>Costo de mantener <em>$/cab/día</em></span><input type="number" id="i_costo" value="1000" min="0" step="50" inputmode="decimal"></label>
+        <label><span>Tasa mensual <em>%</em></span><input type="number" id="i_tasa" value="2" min="0" step="0.1" inputmode="decimal"></label>
+      </div>
+      <p class="fine">Costo de mantener y tasa son valores de ejemplo, no datos de mercado: cargá los tuyos. La tasa es lo que te rendiría cobrar hoy.</p>
+      <div class="hoy"><span class="k" id="o_khoy"></span><span class="x" id="o_hoy"></span></div>
+      <table class="esc" id="o_esc"></table>
+      <p class="fine" id="o_costos"></p>
+      <div class="eq" id="o_eq"></div>
+      <p class="fine">No incluye comisión, flete ni desbaste. El escenario «igual que hoy» es la referencia de no proyectar nada.</p>
+    </div>
+  </div>
+</section>
+
+<section class="row">
+  <div class="card" style="flex:1 1 360px;gap:14px">
+    <h2>Oferta: ingreso semanal al MAG</h2>
+    <p class="note">Miles de cabezas · últimas 8 semanas · línea punteada: promedio de las 8 semanas previas</p>
+    <div class="cols" id="oferta"></div>
+    <div class="fine mono" style="display:flex;justify-content:space-between" id="oferta-fechas"></div>
+    <p class="note" style="color:var(--ink2)" id="oferta-txt"></p>
+  </div>
+  <div class="card" style="flex:1 1 420px">
+    <h2>Alertas de la semana</h2>
+    <div class="alerts" id="alertas"></div>
+  </div>
+</section>
+
+<footer id="pie"></footer>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+  const D = SNAPSHOT;
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+
+  /* ---------- fechas ---------- */
+  const DAY = 864e5;
+  const pad = n => String(n).padStart(2, '0');
+  const parse = s => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d); };
+  const dt = t => new Date(t);
+  const ddmm = t => pad(dt(t).getUTCDate()) + '/' + pad(dt(t).getUTCMonth() + 1);
+  const fecha = t => ddmm(t) + '/' + dt(t).getUTCFullYear();
+  const ymOf = t => dt(t).getUTCFullYear() + '-' + pad(dt(t).getUTCMonth() + 1);
+  const semMes = lunes => ymOf(lunes + 2 * DAY);            // mes de una semana = mes de su miércoles
+  const ymAdd = (s, k) => { let [y, m] = s.split('-').map(Number); m += k; while (m > 12) { m -= 12; y++; } while (m < 1) { m += 12; y--; } return y + '-' + pad(m); };
+  const MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  const MESL = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const mesCorto = s => MES[+s.slice(5) - 1];
+  const mesLargo = s => MESL[+s.slice(5) - 1] + ' ' + s.slice(0, 4);
+  const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+
+  /* ---------- números (formato argentino, sin depender del locale del navegador) ---------- */
+  function nf(v, d = 0) {
+    if (v == null || !isFinite(v)) return '—';
+    const s = Math.abs(v).toFixed(d), p = s.split('.');
+    return (v < 0 && Number(s) !== 0 ? '−' : '') + p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (p[1] ? ',' + p[1] : '');
+  }
+  const pct = (x, d = 1) => (x == null || !isFinite(x)) ? '—' : (x < 0 && Number(Math.abs(x * 100).toFixed(d)) !== 0 ? '−' : '+') + nf(Math.abs(x * 100), d) + '%';
+  const pctAuto = x => pct(x, Math.abs(x * 100 - Math.round(x * 100)) < 1e-6 ? 0 : 1);   // 0,07 → +7% · 0,0650 → +6,5%
+  const precio = (v, u) => u === 'usd' ? 'USD ' + nf(v, 2) : '$' + nf(v, 0);
+  const cifra = (v, u) => u === 'usd' ? nf(v, 2) : nf(v, 0);
+  const plataAbs = v => '$' + (Math.abs(v) >= 1e6 ? nf(Math.abs(v) / 1e6, 2) + ' M' : nf(Math.abs(v), 0));
+  const plata = v => (v < 0 ? '−' : '') + plataAbs(v);
+  const plataSig = v => (v < 0 ? '−' : '+') + plataAbs(v);
+
+  /* ---------- inflación: índice relativo al mes base ---------- */
+  const faltan = new Set();
+  const tasa = m => m in D.ipc ? { r: D.ipc[m], src: 'IPC' } : m in D.rem ? { r: D.rem[m], src: 'REM' } : null;
+  function indice(m) {
+    let v = 1;
+    if (m > D.mes_base) {
+      for (let k = ymAdd(D.mes_base, 1); k <= m; k = ymAdd(k, 1)) { const t = tasa(k); if (!t) { faltan.add(k); return NaN; } v *= 1 + t.r / 100; }
+    } else {
+      for (let k = D.mes_base; k > m; k = ymAdd(k, -1)) { const t = tasa(k); if (!t) { faltan.add(k); return NaN; } v /= 1 + t.r / 100; }
+    }
+    return v;
+  }
+  const tramo = m => { const out = []; for (let k = ymAdd(D.mes_base, 1); k <= m; k = ymAdd(k, 1)) out.push([k, tasa(k)]); return out; };
+  const listaInfl = tr => tr.map(([m, t]) => `${mesCorto(m)}. ${t ? nf(t.r, 1) + '% (' + t.src + ')' : 'sin dato'}`).join(' × ');
+
+  /* ---------- semanas y conversiones ---------- */
+  const N = D.dolar.semanal.length;
+  const T0 = parse(D.semana.desde), T1 = parse(D.semana.hasta);
+  const semT = i => T0 - 7 * DAY * (N - 1 - i);
+  const mesHoy = semMes(T0);
+  const dolarHoy = D.dolar.semanal[N - 1];
+  const HS = [4, 12];
+  const proyT = h => T0 + 7 * h * DAY;
+  const proyMes = h => semMes(proyT(h));
+  const dolarProy = h => D.dolar.rem[proyMes(h)];
+  const deHoy = (v, u) => u === 'nom' ? v : u === 'real' ? v / indice(mesHoy) : v / dolarHoy;
+  const serieEn = (s, u) => s.map((v, i) => u === 'nom' ? v : u === 'real' ? v / indice(semMes(semT(i))) : v / D.dolar.semanal[i]);
+  const deProy = (r, h, u) => u === 'real' ? r : u === 'nom' ? r * indice(proyMes(h)) : r * indice(proyMes(h)) / dolarProy(h);
+  const UNOMBRE = { nom: 'pesos corrientes', real: 'pesos constantes', usd: 'dólares' };
+
+  /* ---------- validación del snapshot ---------- */
+  function validar() {
+    const P = new Set(), need = (ok, msg) => { if (!ok) P.add(msg); };
+    need(N >= 3, 'dolar.semanal necesita al menos 3 semanas.');
+    D.categorias.forEach(c => {
+      if (c.serie) need(c.serie.length === N, `${c.nombre}: la serie tiene ${c.serie.length} semanas y dolar.semanal ${N}; tienen que coincidir.`);
+      else need([c.precio, c.var_sem, c.vs26_real].every(v => typeof v === 'number'), `${c.nombre}: sin serie hacen falta precio, var_sem y vs26_real.`);
+      need(!!c.p4, `${c.nombre}: falta la proyección a 4 semanas (p4).`);
+      HS.forEach(h => {
+        const p = c['p' + h]; if (!p) return;
+        need(p.p10 <= p.central && p.central <= p.p90, `${c.nombre}: en p${h} tiene que cumplirse p10 ≤ central ≤ p90.`);
+        need(dolarProy(h) > 0, `Falta dolar.rem para ${mesLargo(proyMes(h))} (proyección a ${h} semanas).`);
+        if (!c.serie) need(typeof p.estacional === 'number', `${c.nombre}: sin serie hace falta p${h}.estacional.`);
+        indice(proyMes(h));
+      });
+    });
+    need(D.categorias.some(c => c.id === D.categoria_grafico && c.serie), 'categoria_grafico tiene que ser una categoría con serie.');
+    for (let i = 0; i < N; i++) indice(semMes(semT(i)));
+    faltan.forEach(m => P.add(`Falta la inflación de ${mesLargo(m)} (en ipc o rem).`));
+    return [...P];
+  }
+
+  /* ---------- modelo por categoría (todo derivado del snapshot) ---------- */
+  function senal(p) {
+    if (!p || p.p_suba == null) return { k: 'na', txt: 'Sin dato' };
+    const t = D.modelo.umbral_var, q = D.modelo.umbral_prob;
+    if (p.dv >= t && p.p_suba >= q) return { k: 'esperar', txt: 'Esperar' };
+    if (p.dv <= -t && 1 - p.p_suba >= q) return { k: 'vender', txt: 'Vender' };
+    return { k: 'neutral', txt: 'Sin señal' };
+  }
+  function modelo(c) {
+    const o = { id: c.id, nombre: c.nombre, c };
+    if (Array.isArray(c.serie)) {
+      const real = serieEn(c.serie, 'real');
+      o.precio = c.serie[N - 1];
+      o.varSem = c.serie[N - 1] / c.serie[N - 2] - 1;
+      o.base = mean(real.slice(-3));
+      o.basePts = real.slice(-3).map((v, k) => [semT(N - 3 + k), v]);
+      o.vs26 = o.base / mean(real) - 1;
+    } else {
+      o.precio = c.precio; o.varSem = c.var_sem; o.vs26 = c.vs26_real;
+    }
+    o.realHoy = o.precio / indice(mesHoy);
+    HS.forEach(h => {
+      const p = c['p' + h]; if (!p) return;
+      o['p' + h] = Object.assign({}, p, { h, est: o.base ? p.central / o.base - 1 : p.estacional, dv: p.central / o.realHoy - 1 });
+    });
+    o.senal = senal(o.p4);
+    return o;
+  }
+
+  const problemas = validar();
+  const M = {};
+  D.categorias.forEach(c => { M[c.id] = modelo(c); });
+  const S = { u: 'nom', cat: (M[D.categoria_grafico] ? D.categoria_grafico : D.categorias[0].id), h: 4 };
+  const hEf = o => o['p' + S.h] ? S.h : 4;
+  const chip = s => `<span class="chip ${s.k}">${{ esperar: '■', vender: '▲', neutral: '–', na: '–' }[s.k]} ${s.txt}</span>`;
+
+  /* ---------- barra de rango (semáforo y simulador) ---------- */
+  function barra(o) {
+    const w = o.w || 200, h = 28, P = 6, [a, b] = o.dom, cy = h / 2, oscuro = o.tema === 'oscuro';
+    const x = v => (P + (Math.min(Math.max(v, a), b) - a) / (b - a) * (w - 2 * P)).toFixed(1);
+    let s = `<line x1="${P}" x2="${w - P}" y1="${cy}" y2="${cy}" stroke="${oscuro ? '#3D4A42' : '#DCE2DD'}"/>`;
+    if (o.zona) s += `<rect x="${x(o.zona[0])}" y="${cy - 9}" width="${(x(o.zona[1]) - x(o.zona[0])).toFixed(1)}" height="18" fill="${oscuro ? '#2C3831' : '#EEF0EE'}"/>`;
+    s += `<rect x="${x(o.lo)}" y="${cy - 5}" width="${Math.max(2, x(o.hi) - x(o.lo)).toFixed(1)}" height="10" rx="3" fill="${oscuro ? '#9FD3B4' : '#2E6A4C'}" fill-opacity="${oscuro ? '.35' : '.22'}"/>`;
+    s += `<rect x="${(x(o.mid) - 1.25).toFixed(1)}" y="${cy - 8}" width="2.5" height="16" rx="1" fill="${oscuro ? '#9FD3B4' : '#1E4A34'}"/>`;
+    if (o.marca != null) s += `<rect x="${(x(o.marca) - 1).toFixed(1)}" y="${cy - 11}" width="2" height="22" fill="${oscuro ? '#F2D58A' : '#B7862E'}"/>`;
+    s += `<circle cx="${x(o.ref)}" cy="${cy}" r="4.5" fill="${oscuro ? '#F3F5F2' : '#17211B'}" stroke="${oscuro ? '#222E27' : '#fff'}" stroke-width="2"/>`;
+    return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">${s}</svg>`;
+  }
+  const glifo = {
+    hoy: (c = '#17211B') => `<svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="${c}"/></svg>`,
+    central: (c = '#1E4A34') => `<svg width="6" height="14" aria-hidden="true"><rect x="2" y="0" width="2.5" height="14" rx="1" fill="${c}"/></svg>`,
+    banda: (c = '#2E6A4C', op = '.22') => `<svg width="20" height="10" aria-hidden="true"><rect width="20" height="10" rx="3" fill="${c}" fill-opacity="${op}"/></svg>`,
+    zona: () => `<svg width="20" height="14" aria-hidden="true"><rect width="20" height="14" fill="#EEF0EE" stroke="#DCE2DD"/></svg>`,
+    marca: (c = '#B7862E') => `<svg width="6" height="16" aria-hidden="true"><rect x="2" y="0" width="2" height="16" fill="${c}"/></svg>`
+  };
+
+  /* ---------- cabecera, frescura y unidades ---------- */
+  function renderCabecera() {
+    $('semana').textContent = `Semana del ${fecha(T0)} al ${fecha(T1)} · snapshot cargado a mano el ${fecha(parse(D.cargado))} · fuentes: ${D.fuentes.resumen}`;
+    const ahora = new Date(), hoyT = Date.UTC(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+    const dias = Math.floor((hoyT - T1) / DAY), chipF = $('frescura');
+    if (dias >= 0) {
+      chipF.textContent = `Snapshot manual · datos de hace ${dias} ${dias === 1 ? 'día' : 'días'}`;
+      chipF.className = 'tag ' + (dias >= 7 ? 'stale' : 'fresh');
+    }
+    if (dias >= 7) {
+      const sem = Math.floor(dias / 7), av = $('aviso');
+      av.hidden = false;
+      av.innerHTML = `<span class="k">DATOS VIEJOS</span><span>Los números son de la semana del ${ddmm(T0)} al ${fecha(T1)} (hace ${dias} días). Este demo no se conecta en vivo: el snapshot se carga a mano y desde entonces ${sem === 1 ? 'cerró al menos una semana de mercado que no está reflejada' : 'cerraron ' + sem + ' semanas de mercado que no están reflejadas'}.</span>`;
+    }
+    if (problemas.length) {
+      const pr = $('problemas');
+      pr.hidden = false;
+      pr.innerHTML = `<strong>Revisar el snapshot:</strong><ul>${problemas.map(p => `<li>${esc(p)}</li>`).join('')}</ul>`;
+    }
+  }
+  function renderUnidades() {
+    document.querySelectorAll('[data-u]').forEach(b => b.setAttribute('aria-pressed', b.dataset.u === S.u));
+    const rem = Object.keys(D.rem).length ? ' (deflactado por IPC; meses sin dato, inflación REM)' : ' (deflactado por IPC)';
+    $('u-cap').textContent = { nom: 'Pesos de cada semana', real: `Pesos de ${mesLargo(D.mes_base)}${rem}`, usd: 'Dólar oficial mayorista A3500 (proyección: dólar REM)' }[S.u];
+  }
+
+  /* ---------- KPIs ---------- */
+  function renderKpis() {
+    const u = S.u, g = D.general, k = M[D.categoria_kpi] || M[D.categorias[0].id], r0 = D.relaciones[0];
+    const delta = (x, txt) => `<span class="delta ${x >= 0 ? 'up' : ''}">${x >= 0 ? '▲' : '▼'} ${pct(x)} ${txt}</span>`;
+    const ing = g.ingreso_cab / g.ingreso_prom8 - 1;
+    $('kpis').innerHTML = [
+      `<div class="card kpi"><span class="lab">Precio promedio general</span><span class="val">${precio(deHoy(g.precio_promedio, u), u)}<small>/kg</small></span>${delta(g.var_sem, 'semanal (nominal)')}</div>`,
+      `<div class="card kpi"><span class="lab">${esc(k.nombre)} (importe / kilos)</span><span class="val">${precio(deHoy(k.precio, u), u)}<small>/kg</small></span>${delta(k.varSem, 'semanal (nominal)')}</div>`,
+      `<div class="card kpi"><span class="lab">Ingreso de hacienda · semana</span><span class="val">${nf(g.ingreso_cab)}<small> cab.</small></span><span class="delta">${pct(ing, 0)} vs. promedio de 8 semanas</span></div>`,
+      r0 ? `<div class="card kpi"><span class="lab">Relación ${esc(r0.nombre.toLowerCase())}</span><span class="val">${(r0.prefijo || '') + nf(r0.valor, r0.dec)}<small> veces</small></span><span class="delta ${r0.tono === 'alerta' ? 'warn' : ''}">Percentil ${r0.percentil}${r0.fuente ? ' · ' + esc(r0.fuente) : ''}</span></div>` : ''
+    ].join('');
+  }
+
+  /* ---------- gráfico principal ---------- */
+  function ticks(lo, hi, n = 5) {
+    if (!(hi > lo)) hi = lo + 1;
+    const raw = (hi - lo) / (n - 1), e = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / e;
+    const step = (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * e, out = [];
+    for (let v = Math.floor(lo / step) * step; v <= Math.ceil(hi / step) * step + step / 2; v += step) out.push(+v.toFixed(10));
+    return out;
+  }
+  function renderGrafico() {
+    const c = D.categorias.find(x => x.id === D.categoria_grafico && x.serie); if (!c) return;
+    const box = $('graf'), u = S.u, o = M[c.id];
+    const hs = HS.filter(h => c['p' + h]);
+    $('g-titulo').textContent = `${c.nombre} · ${N} semanas${hs.length ? ' y proyección a ' + hs.join(' y ') + ' semanas' : ''}`;
+    const obs = serieEn(c.serie, u);
+    const pr = hs.map(h => { const p = c['p' + h]; return { h, i: N - 1 + h, t: proyT(h), c: deProy(p.central, h, u), lo: deProy(p.p10, h, u), hi: deProy(p.p90, h, u) }; });
+    const W = Math.max(320, Math.round(box.clientWidth || 720)), H = 262;
+    const L = W < 520 ? 44 : 58, R = W - 12, T = 24, B = 222;
+    const slots = N - 1 + (hs.length ? Math.max(...hs) : 0);
+    const X = i => L + i * (R - L) / slots;
+    const vals = obs.concat(...pr.map(p => [p.lo, p.hi]));
+    const tk = ticks(Math.min(...vals), Math.max(...vals)), y0 = tk[0], y1 = tk[tk.length - 1];
+    const Y = v => B - (v - y0) / (y1 - y0) * (B - T);
+    const f1 = v => v.toFixed(1), xHoy = X(N - 1), yHoy = Y(obs[N - 1]);
+    let s = '';
+    tk.forEach(v => { s += `<line x1="${L}" x2="${R}" y1="${f1(Y(v))}" y2="${f1(Y(v))}" stroke="#E6EAE7"/><text x="${L - 8}" y="${f1(Y(v) + 4)}" text-anchor="end" class="ax">${cifra(v, u)}</text>`; });
+    let prev = semMes(semT(0)), lastX = -99;
+    for (let i = 1; i <= slots; i++) {
+      const m = semMes(T0 + 7 * DAY * (i - (N - 1)));
+      if (m === prev) continue;
+      prev = m;
+      const x = X(i);
+      if (Math.abs(x - xHoy) > 34 && x - lastX > 28 && x < R - 10) {
+        s += `<text x="${f1(x)}" y="${B + 18}" text-anchor="middle" class="ax">${mesCorto(m)}${m.endsWith('-01') ? ' ' + m.slice(2, 4) : ''}</text>`;
+        lastX = x;
+      }
+    }
+    s += `<line x1="${f1(xHoy)}" x2="${f1(xHoy)}" y1="${T - 6}" y2="${B}" stroke="#17211B" stroke-opacity=".35"/>`;
+    s += `<text x="${f1(xHoy)}" y="${B + 18}" text-anchor="middle" class="ax ink">sem. ${ddmm(T0)}</text>`;
+    if (pr.length) {
+      const top = [[xHoy, yHoy]].concat(pr.map(p => [X(p.i), Y(p.hi)]));
+      const bot = pr.slice().reverse().map(p => [X(p.i), Y(p.lo)]);
+      s += `<polygon points="${top.concat(bot).map(q => f1(q[0]) + ',' + f1(q[1])).join(' ')}" fill="#2E6A4C" fill-opacity=".13"/>`;
+      s += `<polyline points="${[[xHoy, yHoy]].concat(pr.map(p => [X(p.i), Y(p.c)])).map(q => f1(q[0]) + ',' + f1(q[1])).join(' ')}" fill="none" stroke="#2E6A4C" stroke-width="2" stroke-dasharray="6 4" stroke-linecap="round"/>`;
+    }
+    s += `<polyline points="${obs.map((v, i) => f1(X(i)) + ',' + f1(Y(v))).join(' ')}" fill="none" stroke="#17211B" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const dot = (x, y, col) => `<circle cx="${f1(x)}" cy="${f1(y)}" r="4.5" fill="${col}" stroke="#fff" stroke-width="2"/>`;
+    s += dot(xHoy, yHoy, '#17211B') + `<text x="${f1(xHoy - 9)}" y="${f1(yHoy - 10)}" text-anchor="end" class="lbl">${cifra(obs[N - 1], u)}</text>`;
+    pr.forEach((p, k) => {
+      const x = X(p.i), y = Y(p.c), last = k === pr.length - 1;
+      s += dot(x, y, '#2E6A4C') + `<text x="${f1(last ? x - 4 : x)}" y="${f1(y - 11)}" text-anchor="${last ? 'end' : 'middle'}" class="lbl">${cifra(p.c, u)}</text>`;
+    });
+    s += `<line id="g-cross" y1="${T - 6}" y2="${B}" stroke="#17211B" stroke-opacity=".55" visibility="hidden"/>`;
+    s += `<circle id="g-hl" r="6" fill="#fff" stroke-width="2.5" visibility="hidden"/>`;
+    s += `<rect x="${L}" y="${T - 6}" width="${R - L}" height="${B - T + 6}" fill="transparent"/>`;
+    const aria = `Precio del ${c.nombre.toLowerCase()} en ${UNOMBRE[u]}, últimas ${N} semanas: de ${cifra(obs[0], u)} a ${cifra(obs[N - 1], u)}` +
+      pr.map(p => `; proyección central a ${p.h} semanas ${cifra(p.c, u)} (rango ${cifra(p.lo, u)} a ${cifra(p.hi, u)})`).join('') + '.';
+    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" tabindex="0" aria-label="${esc(aria)}">${s}</svg><div class="tip" id="g-tip" aria-hidden="true"></div>`;
+
+    // capa de lectura: crosshair + tooltip, con mouse, toque y teclado
+    const pts = obs.map((v, i) => ({ x: X(i), y: Y(v), i, v, kind: 'obs' })).concat(pr.map(p => ({ x: X(p.i), y: Y(p.c), p, kind: 'proj' })));
+    const svg = box.querySelector('svg'), tip = $('g-tip'), cross = svg.querySelector('#g-cross'), hl = svg.querySelector('#g-hl');
+    let cur = -1;
+    function show(k) {
+      cur = k; const q = pts[k];
+      cross.setAttribute('x1', q.x); cross.setAttribute('x2', q.x); cross.setAttribute('visibility', 'visible');
+      hl.setAttribute('cx', q.x); hl.setAttribute('cy', q.y); hl.setAttribute('stroke', q.kind === 'obs' ? '#17211B' : '#2E6A4C'); hl.setAttribute('visibility', 'visible');
+      if (q.kind === 'obs') {
+        const vs = q.i > 0 ? `var. semanal ${pct(q.v / obs[q.i - 1] - 1)}` : 'primera semana de la serie';
+        tip.innerHTML = `<div class="d">Semana del ${fecha(semT(q.i))}${q.i === N - 1 ? ' · snapshot' : ''}</div><div class="v">${precio(q.v, u)}<span>/kg</span></div><div class="n">${vs}</div>`;
+      } else {
+        tip.innerHTML = `<div class="d">Proyección a ${q.p.h} semanas · semana del ${fecha(q.p.t)}</div><div class="v">${precio(q.p.c, u)}<span>/kg central</span></div><div class="n">rango 80%: ${precio(q.p.lo, u)} – ${precio(q.p.hi, u)}</div>`;
+      }
+      const sc = svg.getBoundingClientRect().width / W, bw = box.clientWidth, tw = tip.offsetWidth;
+      let left = q.x * sc + 14;
+      if (left + tw > bw) left = q.x * sc - tw - 14;
+      tip.style.left = Math.max(0, left) + 'px';
+      tip.style.top = Math.max(0, Math.min(q.y * sc - 70, B * sc - tip.offsetHeight)) + 'px';
+      tip.classList.add('on');
+    }
+    function hide() { cur = -1; tip.classList.remove('on'); cross.setAttribute('visibility', 'hidden'); hl.setAttribute('visibility', 'hidden'); }
+    function nearest(ev) {
+      const r = svg.getBoundingClientRect(), x = (ev.clientX - r.left) * W / r.width;
+      let best = 0; pts.forEach((q, k) => { if (Math.abs(q.x - x) < Math.abs(pts[best].x - x)) best = k; });
+      return best;
+    }
+    svg.addEventListener('pointermove', ev => show(nearest(ev)));
+    svg.addEventListener('pointerdown', ev => show(nearest(ev)));
+    svg.addEventListener('pointerleave', hide);
+    svg.addEventListener('focus', () => show(N - 1));
+    svg.addEventListener('blur', hide);
+    svg.addEventListener('keydown', ev => {
+      if (ev.key === 'ArrowRight' || ev.key === 'ArrowLeft') {
+        ev.preventDefault();
+        show(Math.min(pts.length - 1, Math.max(0, (cur < 0 ? N - 1 : cur) + (ev.key === 'ArrowRight' ? 1 : -1))));
+      } else if (ev.key === 'Escape') hide();
+    });
+
+    // tabla equivalente
+    let t = `<table class="datatbl"><thead><tr><th>Semana</th><th class="num">${c.nombre} · ${UNOMBRE[u]} por kg</th></tr></thead><tbody>`;
+    obs.forEach((v, i) => { t += `<tr><td>${fecha(semT(i))}${i === N - 1 ? ' (snapshot)' : ''}</td><td class="num">${cifra(v, u)}</td></tr>`; });
+    pr.forEach(p => { t += `<tr><td>${fecha(p.t)} (proyección ${p.h} sem.)</td><td class="num">${cifra(p.c, u)} · rango ${cifra(p.lo, u)} – ${cifra(p.hi, u)}</td></tr>`; });
+    $('g-tabla').innerHTML = t + '</tbody></table>';
+  }
+
+  /* ---------- relaciones ---------- */
+  function renderRelaciones() {
+    $('rel-sub').textContent = `Percentil de hoy dentro de su historia desde ${D.relaciones_desde}.`;
+    const col = { alerta: ['#B7862E', 'var(--amber-text)'], favorable: ['#2E6A4C', 'var(--green)'], neutral: ['#7C8A82', 'var(--muted)'] };
+    $('rel').innerHTML = D.relaciones.map(r => {
+      const [bar, txt] = col[r.tono] || col.neutral;
+      return `<div class="rel"><div class="t"><b>${esc(r.nombre)}</b><span class="mono">${esc((r.prefijo || '') + nf(r.valor, r.dec))} · p${r.percentil}</span></div>` +
+        `<div class="meter" role="img" aria-label="Percentil ${r.percentil}"><i style="width:${r.percentil}%;background:${bar}"></i></div>` +
+        `<span style="font-size:12px;color:${txt}">${esc(r.lectura)}</span></div>`;
+    }).join('');
+  }
+
+  /* ---------- semáforo ---------- */
+  function renderSemaforo() {
+    const u = S.u, thr = D.modelo.umbral_var, q = D.modelo.umbral_prob;
+    $('sem-sub').textContent = `Señal para quien vende · proyección a 4 semanas (semana del ${fecha(proyT(4))}) · ${UNOMBRE[u]}`;
+    const rel = D.categorias.map(c => M[c.id]).filter(o => o.p4);
+    const lo = Math.min(-thr, ...rel.map(o => o.p4.p10 / o.realHoy - 1)), hi = Math.max(thr, ...rel.map(o => o.p4.p90 / o.realHoy - 1));
+    const dom = [Math.floor((lo - 0.01) * 50) / 50, Math.ceil((hi + 0.01) * 50) / 50];
+    const escala = (() => {
+      const w = 200, P = 6, x = v => P + (v - dom[0]) / (dom[1] - dom[0]) * (w - 2 * P);
+      let s = '';
+      for (let v = Math.ceil(dom[0] * 10) / 10; v <= dom[1] + 1e-9; v += 0.1) {
+        const vv = Math.round(v * 10) / 10;
+        s += `<text x="${x(vv).toFixed(1)}" y="11" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#55615A">${vv === 0 ? '0' : pct(vv, 0)}</text>`;
+      }
+      return `<svg viewBox="0 0 ${w} 14" width="${w}" height="14" aria-hidden="true" style="display:block;margin-top:6px">${s}</svg>`;
+    })();
+    let h = `<thead><tr><th>Categoría</th><th class="num">Por kg hoy</th><th class="num">Var. sem.<br>(nominal)</th><th class="num">vs. prom.<br>26 sem. (real)</th>` +
+      `<th class="num">4 semanas<br>central y rango 80%</th><th>Variación real esperada a 4 sem.${escala}</th><th>Señal</th><th>Por qué</th></tr></thead><tbody>`;
+    D.categorias.forEach(c => {
+      const o = M[c.id], p = o.p4; if (!p) return;
+      const sel = S.cat === c.id;
+      const por = `Patrón estacional ${p.est != null ? pctAuto(p.est) : '—'} a 4 semanas; precio ${pct(o.vs26, 0)} vs. su promedio de 26 semanas. Prob. de suba: ${nf(p.p_suba * 100, 0)}%.`;
+      const rng = { lo: p.p10 / o.realHoy - 1, hi: p.p90 / o.realHoy - 1 };
+      h += `<tr class="${sel ? 'sel' : ''}">` +
+        `<td data-l=""><button type="button" class="catbtn" data-cat="${esc(c.id)}" aria-pressed="${sel}">${esc(c.nombre)}</button></td>` +
+        `<td class="num" data-l="Por kg hoy">${cifra(deHoy(o.precio, u), u)}</td>` +
+        `<td class="num" data-l="Var. sem. (nominal)">${pct(o.varSem)}</td>` +
+        `<td class="num" data-l="vs. prom. 26 sem. (real)">${pct(o.vs26)}</td>` +
+        `<td class="num" data-l="4 semanas · central y rango"><strong style="font-weight:500">${cifra(deProy(p.central, 4, u), u)}</strong><div class="rng">${cifra(deProy(p.p10, 4, u), u)} – ${cifra(deProy(p.p90, 4, u), u)}</div></td>` +
+        `<td class="full" data-l="Variación real esperada"><div class="barcell" title="Rango 80%: ${pct(rng.lo)} a ${pct(rng.hi)}; central ${pct(p.dv)}">${barra({ dom, lo: rng.lo, mid: p.dv, hi: rng.hi, ref: 0, zona: [-thr, thr] })}<span class="num">${pct(p.dv)}</span></div></td>` +
+        `<td data-l="Señal">${chip(o.senal)}</td>` +
+        `<td class="why full" data-l="">${por}</td></tr>`;
+    });
+    $('sem').innerHTML = h + '</tbody>';
+    $('sem-keys').innerHTML = `<span>${glifo.hoy()} precio real de hoy</span><span>${glifo.central()} proyección central</span><span>${glifo.banda()} rango 80%</span><span>${glifo.zona()} zona sin señal (±${nf(thr * 100, 0)}%)</span><span>Tocá una categoría para ver su cálculo y simular la venta.</span>`;
+    $('sem-regla').textContent = `«Esperar»: para quien vende conviene retener si tiene pasto o corral; para quien compra, adelantarse. «Vender»: lo inverso. Regla: si la variación real esperada (central a 4 semanas contra el precio real de hoy) es de +${nf(thr * 100, 0)}% o más y la probabilidad de suba es de ${nf(q * 100, 0)}% o más, «Esperar»; si es de −${nf(thr * 100, 0)}% o menos con probabilidad de baja de ${nf(q * 100, 0)}% o más, «Vender»; si no, sin señal. «vs. prom. 26 sem.» compara el promedio real de las últimas 3 semanas con el de las últimas 26.`;
+    $('sem').querySelectorAll('.catbtn').forEach(b => b.addEventListener('click', () => elegirCat(b.dataset.cat)));
+  }
+
+  /* ---------- controles de categoría y horizonte ---------- */
+  function renderControles() {
+    const o = M[S.cat];
+    $('ctl-cat').innerHTML = D.categorias.map(c => `<button type="button" data-cat="${esc(c.id)}" aria-pressed="${S.cat === c.id}">${esc(c.nombre)}</button>`).join('');
+    $('ctl-cat').querySelectorAll('button').forEach(b => b.addEventListener('click', () => elegirCat(b.dataset.cat)));
+    $('ctl-h').querySelectorAll('button').forEach(b => {
+      const h = +b.dataset.h, ok = !!o['p' + h];
+      b.disabled = !ok;
+      b.title = ok ? '' : `Este snapshot no trae proyección a ${h} semanas para ${o.nombre.toLowerCase()}`;
+      b.setAttribute('aria-pressed', ok && hEf(o) === h);
+    });
+  }
+  function elegirCat(id) {
+    if (!M[id]) return;
+    S.cat = id;
+    renderSemaforo(); renderControles(); renderCalculo(); renderSim();
+  }
+
+  /* ---------- proyección paso a paso ---------- */
+  function renderCalculo() {
+    const o = M[S.cat], h = hEf(o), p = o['p' + h];
+    $('calc-titulo').textContent = `Cómo se arma la proyección · ${o.nombre} · ${h} semanas`;
+    $('calc-sub').textContent = `${D.modelo.descripcion}. El patrón estacional, el rango y la probabilidad salen del modelo, que corre fuera de esta página con la historia de precios; acá se muestran y se convierten a pesos corrientes y dólares.`;
+    if (!p) { $('calc').innerHTML = ''; return; }
+    const fHoy = indice(mesHoy), mP = proyMes(h), fP = indice(mP), usd = dolarProy(h);
+    const st = [];
+    st.push({ l: 'Precio de la semana', v: precio(o.precio, 'nom') + '/kg', h: `Pesos corrientes, semana del ${ddmm(T0)} al ${fecha(T1)}.` });
+    st.push({ l: `En pesos de ${mesLargo(D.mes_base)}`, v: precio(o.realHoy, 'real'), h: mesHoy === D.mes_base ? 'Mismo mes que el mes base: sin ajuste.' : `÷ ${nf(fHoy, 3)} — inflación ${listaInfl(tramo(mesHoy))}. El modelo trabaja en pesos constantes.` });
+    if (o.base) st.push({ l: 'Base: promedio real de 3 semanas', v: precio(o.base, 'real'), h: o.basePts.map(([t, v]) => `${ddmm(t)}: ${nf(v)}`).join(' · ') });
+    else st.push({ l: 'Base: promedio real de 3 semanas', v: '—', h: `La serie semanal de ${o.nombre.toLowerCase()} no está cargada en este snapshot, así que la base no se puede recalcular acá.` });
+    st.push({ l: `Patrón estacional a ${h} semanas`, v: p.est != null ? pctAuto(p.est) : '—', h: o.base ? 'Implícito en la proyección del modelo (central ÷ base − 1).' : 'Informado por el modelo (redondeado).' });
+    st.push({ key: 1, l: 'Proyección central', v: precio(p.central, 'real'), h: (o.base ? `= base × (1 ${p.est < 0 ? '−' : '+'} ${nf(Math.abs(p.est * 100), 1)}%). ` : 'Informada por el modelo. ') + `Semana del ${fecha(proyT(h))}, en pesos de ${mesLargo(D.mes_base)}.` });
+    st.push({ l: 'Rango estimado 80%', v: `${precio(p.p10, 'real')} – ${precio(p.p90, 'real')}`, h: `${pct(p.p10 / p.central - 1)} / ${pct(p.p90 / p.central - 1)} alrededor del central, según el modelo.` });
+    st.push({ key: 1, l: 'En pesos corrientes', v: precio(p.central * fP, 'nom'), h: `× ${nf(fP, 3)} — inflación ${listaInfl(tramo(mP))}. Rango ${precio(p.p10 * fP, 'nom')} – ${precio(p.p90 * fP, 'nom')}.` });
+    st.push({ l: 'En dólares', v: precio(p.central * fP / usd, 'usd'), h: `÷ $${nf(usd)} por dólar (dólar esperado REM, ${mesCorto(mP)}.). Rango ${precio(p.p10 * fP / usd, 'usd')} – ${precio(p.p90 * fP / usd, 'usd')}.` });
+    if (h === 4) {
+      const thr = D.modelo.umbral_var, q = D.modelo.umbral_prob, sg = o.senal;
+      const cumple = sg.k === 'esperar' ? `Supera +${nf(thr * 100, 0)}% y ${nf(q * 100, 0)}%: esperar.`
+        : sg.k === 'vender' ? `Queda en −${nf(thr * 100, 0)}% o menos con probabilidad de baja de ${nf(q * 100, 0)}% o más: vender.`
+        : `No llega a los umbrales (±${nf(thr * 100, 0)}% con ${nf(q * 100, 0)}% de probabilidad).`;
+      st.push({ html: 1, l: 'Señal para quien vende', v: chip(sg), h: `Variación real esperada ${pct(p.dv)} (central contra el precio real de hoy, ${precio(o.realHoy, 'real')}); probabilidad de suba ${p.p_suba != null ? nf(p.p_suba * 100, 0) + '%' : 'sin dato'}. ${cumple}` });
+    } else {
+      st.push({ l: 'Señal', v: '—', h: 'El semáforo usa solo la proyección a 4 semanas.' });
+    }
+    $('calc').innerHTML = st.map((x, k) => `<li class="${x.key ? 'key' : ''}"><span class="n">${k + 1}</span><span class="l">${esc(x.l)}</span><span class="v">${x.html ? x.v : esc(x.v)}</span><span class="h">${esc(x.h)}</span></li>`).join('');
+    const bt = D.modelo.backtest;
+    $('calc-track').innerHTML = bt ? `<b>Qué tan bien anduvo.</b> Backtest desde ${bt.desde} (${esc(bt.categoria)}, ${bt.horizonte} semanas): error medio de ${nf(bt.error_modelo * 100, 1)}%, contra ${nf(bt.error_igual_hoy * 100, 1)}% de suponer que el precio queda igual que hoy; acertó la dirección ${nf(bt.acierto_direccion * 100, 0)}% de las veces. La ventaja sobre «igual que hoy» es chica: usalo como orientación, no como precio asegurado.` : '';
+  }
+
+  /* ---------- simulador de venta ---------- */
+  function renderSim() {
+    const o = M[S.cat], h = hEf(o), p = o['p' + h]; if (!p) return;
+    const val = id => Math.max(0, Number($(id).value) || 0);
+    const cab = val('i_cab'), kg = val('i_kg'), gdp = val('i_gdp'), costo = val('i_costo'), tm = val('i_tasa') / 100;
+    const dias = 7 * h, kf = kg + gdp * dias, fP = indice(proyMes(h));
+    const pHoy = o.precio, hoy = cab * kg * pHoy;
+    const cMant = cab * dias * costo, cFin = hoy * (Math.pow(1 + tm, dias / 30) - 1), costos = cMant + cFin;
+    $('sim-sub').textContent = `${o.nombre} · vender esta semana o dentro de ${h} semanas · pesos corrientes`;
+    $('o_khoy').textContent = `Vender esta semana · ${precio(pHoy, 'nom')}/kg · ${nf(kg, 0)} kg/cab`;
+    // misma escala en toda la tabla: millones si la venta de hoy supera el millón
+    const enM = hoy >= 1e6, abs = v => '$' + (enM ? nf(Math.abs(v) / 1e6, 2) + ' M' : nf(Math.abs(v), 0));
+    const fm = v => (v < 0 ? '−' : '') + abs(v), fmSig = v => (v < 0 ? '−' : '+') + abs(v);
+    $('o_hoy').textContent = fm(hoy);
+    const esc_ = [
+      ['Bajo (p10)', p.p10 * fP, ''], ['Central', p.central * fP, 'c'], ['Alto (p90)', p.p90 * fP, ''], ['Igual que hoy', pHoy, 'ref']
+    ];
+    let t = `<caption>Esperar ${h} semanas · ${nf(kf, 1)} kg/cab (${nf(kg, 0)} + ${nf(gdp, 1)} kg/día × ${dias} días)</caption><thead><tr><th>Escenario</th><th class="num">$/kg</th><th class="num">Ingreso</th><th class="num">vs. vender hoy</th></tr></thead><tbody>`;
+    esc_.forEach(([n, pr, cls]) => {
+      const ing = cab * kf * pr, net = ing - costos - hoy;
+      t += `<tr class="${cls}"><td>${n}</td><td class="num">${nf(pr, 0)}</td><td class="num">${fm(ing)}</td><td class="num ${cab && kg ? (net >= 0 ? 'pos' : 'neg') : ''}">${cab && kg ? fmSig(net) : '—'}</td></tr>`;
+    });
+    $('o_esc').innerHTML = t + '</tbody>';
+    $('o_costos').textContent = `«vs. vender hoy» descuenta los costos de esperar: mantener ${plata(cMant)} (${nf(dias)} días × ${nf(cab)} cab. × ${plata(costo)}) y financiero ${plata(cFin)} (${nf(tm * 100, 1)}% mensual sobre lo que cobrarías hoy).`;
+    const eqBox = $('o_eq');
+    if (!(cab > 0 && kf > 0)) { eqBox.innerHTML = 'Cargá cabezas y kilos para ver el precio de equilibrio.'; return; }
+    const pEq = (hoy + costos) / (cab * kf), lo = p.p10 * fP, mid = p.central * fP, hi = p.p90 * fP;
+    const donde = pEq < lo ? `queda por debajo del rango 80%: según la proyección, esperar rinde más incluso en el escenario bajo.`
+      : pEq > hi ? `queda por encima del rango 80%: según la proyección, vender hoy rinde más incluso en el escenario alto.`
+      : `cae dentro del rango 80%: que convenga esperar depende de cómo se dé el precio (el central es ${precio(mid, 'nom')}).`;
+    const dom = [Math.min(lo, pEq, pHoy) * 0.985, Math.max(hi, pEq, pHoy) * 1.015];
+    eqBox.innerHTML = `<span>Para que esperar convenga, el precio en ${h} semanas tiene que superar <strong>${precio(pEq, 'nom')}/kg</strong> (${pct(pEq / pHoy - 1)} contra hoy). Ese precio ${donde}</span>` +
+      barra({ dom, lo, mid, hi, ref: pHoy, marca: pEq, tema: 'oscuro', w: 320 }) +
+      `<span class="keys"><span>${glifo.hoy('#F3F5F2')} hoy ${precio(pHoy, 'nom')}</span><span>${glifo.central('#9FD3B4')} central ${precio(mid, 'nom')}</span><span>${glifo.banda('#9FD3B4', '.35')} rango 80%</span><span>${glifo.marca('#F2D58A')} equilibrio ${precio(pEq, 'nom')}</span></span>`;
+    eqBox.querySelector('svg').style.cssText = 'width:100%;height:auto;max-width:420px';
+  }
+
+  /* ---------- oferta, alertas y pie ---------- */
+  function renderOferta() {
+    const g = D.general, v = g.ingreso_semanal_miles, n = v.length, ref = g.ingreso_prom8 / 1000, max = Math.max(...v, ref), alto = 130;
+    let s = v.map((x, i) => {
+      const t = T0 - 7 * DAY * (n - 1 - i), last = i === n - 1;
+      const lab = last ? nf(g.ingreso_cab) + ' cabezas' : nf(x, 1) + ' mil cabezas';
+      return `<div class="col${last ? ' last' : ''}" title="Semana del ${fecha(t)}: ${lab}"><span class="cv">${nf(x, 1)}</span><div class="cb" style="height:${(x / max * alto).toFixed(0)}px" role="img" aria-label="Semana del ${fecha(t)}: ${lab}"></div></div>`;
+    }).join('');
+    s += `<div class="ref" style="bottom:${(ref / max * alto).toFixed(0)}px" title="Promedio de las 8 semanas previas: ${nf(g.ingreso_prom8)} cabezas"><span>prom. ${nf(ref, 1)}</span></div>`;
+    $('oferta').innerHTML = s;
+    $('oferta-fechas').innerHTML = `<span>${fecha(T0 - 7 * DAY * (n - 1))}</span><span>${fecha(T0)}</span>`;
+    $('oferta-txt').textContent = `La última semana ingresaron ${nf(g.ingreso_cab)} cabezas, ${pct(g.ingreso_cab / g.ingreso_prom8 - 1, 0)} contra el promedio de las 8 semanas previas (${nf(g.ingreso_prom8)}). Participación de vacas: ${nf(g.part_vacas * 100, 0)}% (promedio de 52 semanas: ${nf(g.part_vacas_prom52 * 100, 0)}%).`;
+  }
+  function renderAlertas() {
+    const por = k => D.categorias.filter(c => M[c.id].senal.k === k).map(c => c.nombre.toLowerCase());
+    const esp = por('esperar'), ven = por('vender');
+    const partes = [];
+    if (esp.length) partes.push(`Señal de esperar para quien vende (${esp.join(', ')}): el patrón estacional anticipa suba real en las próximas 4 semanas. Para quien compra, conviene adelantarse.`);
+    if (ven.length) partes.push(`Señal de vender (${ven.join(', ')}): la proyección anticipa baja real en las próximas 4 semanas.`);
+    if (!partes.length) partes.push('Sin señales fuertes esta semana: ninguna categoría pasa los umbrales del semáforo.');
+    const items = [{ tipo: 'MERCADO', tono: esp.length || ven.length ? 'alerta' : 'neutral', texto: partes.join(' ') }].concat(D.alertas);
+    $('alertas').innerHTML = items.map(a => `<div class="alert ${a.tono === 'alerta' ? 'alerta' : ''}"><span class="k">${esc(a.tipo)}</span><span>${esc(a.texto)}</span></div>`).join('');
+  }
+  function renderPie() {
+    const bt = D.modelo.backtest, infl = Object.keys(D.rem).sort().map(m => `${mesCorto(m)}. ${nf(D.rem[m], 1)}%`).join(', ');
+    $('pie').innerHTML = `<b>Precios de hacienda es una herramienta independiente en versión beta, elaborada con datos públicos. No es una publicación oficial ni está asociada al Mercado Agroganadero S.A., ROSGAN, SENASA, el BCRA ni las demás fuentes citadas. Puede contener errores.</b>` +
+      `<span>Los datos son un snapshot semanal cargado a mano (último: semana del ${fecha(T0)} al ${fecha(T1)}, cargado el ${fecha(parse(D.cargado))}); la página no consulta ninguna fuente en vivo.</span>` +
+      `<span>${esc(D.modelo.descripcion)}${bt ? `; backtest desde ${bt.desde} (${esc(bt.categoria)}, ${bt.horizonte} semanas): error medio ${nf(bt.error_modelo * 100, 1)}% vs. ${nf(bt.error_igual_hoy * 100, 1)}% de «igual que hoy»; acierto de dirección ${nf(bt.acierto_direccion * 100, 0)}%` : ''}. Inflación REM: ${infl}.</span>` +
+      `<span>${esc(D.fuentes.detalle)}</span>`;
+  }
+
+  /* ---------- arranque ---------- */
+  function renderPorUnidad() { renderUnidades(); renderKpis(); renderGrafico(); renderSemaforo(); }
+  document.querySelectorAll('[data-u]').forEach(b => b.addEventListener('click', () => { S.u = b.dataset.u; renderPorUnidad(); }));
+  $('ctl-h').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { S.h = +b.dataset.h; renderControles(); renderCalculo(); renderSim(); }));
+  ['i_cab', 'i_kg', 'i_gdp', 'i_costo', 'i_tasa'].forEach(id => $(id).addEventListener('input', renderSim));
+  let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(renderGrafico, 150); });
+
+  renderCabecera(); renderPorUnidad(); renderRelaciones(); renderControles(); renderCalculo(); renderSim(); renderOferta(); renderAlertas(); renderPie();
+})();
+</script>
+</body>
+</html>

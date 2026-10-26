@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comparación de ofertas</title>
+<meta name="theme-color" content="#F8F5F0">
+<style>
+/* Agro cuántico — sistema visual compartido (landing y páginas de producto).
+   Sin fuentes externas: títulos en serif del sistema, cuerpo en sans del sistema. */
+:root{
+  --navy:#1A365D;--navy-2:#2A4A7C;--bone:#F8F5F0;--sand:#EFEBDF;--white:#FFFFFF;
+  --ink:#334155;--muted:#5B6472;--line:rgba(26,54,93,.16);--line-strong:rgba(26,54,93,.42);
+  --f-head:Georgia,"Iowan Old Style","Noto Serif","Times New Roman",serif;
+  --f-body:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --r:12px;--gap:24px;--max:1120px;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bone);color:var(--ink);font:17px/1.6 var(--f-body);-webkit-font-smoothing:antialiased}
+a{color:var(--navy)}
+:focus-visible{outline:3px solid var(--navy);outline-offset:3px;border-radius:6px}
+
+.bar{display:flex;justify-content:space-between;align-items:center;gap:16px;max-width:var(--max);margin:0 auto;padding:18px 20px;border-bottom:1px solid var(--line);font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.bar a{display:inline-flex;align-items:center;min-height:48px;text-transform:none;letter-spacing:0;font-size:16px;font-weight:600;text-decoration:none}
+.bar a:hover{text-decoration:underline}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+@media (min-width:720px){.bar,.wrap{padding-left:32px;padding-right:32px}}
+
+h1,h2,h3{font-family:var(--f-head);color:var(--navy);font-weight:700;margin:0}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:4px 12px;border-radius:999px;background:var(--sand);color:#4A4F57;font-size:14px;font-weight:600;line-height:1.4}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--navy-2)}
+
+/* Landing */
+.hero{padding:56px 0 36px}
+.hero::before{content:"";display:block;width:56px;height:4px;margin-bottom:22px;background:var(--navy);border-radius:2px}
+.hero h1{font-size:clamp(38px,6vw,56px);line-height:1.08;letter-spacing:-.015em}
+.hero p{margin:14px 0 0;max-width:34ch;font-size:clamp(19px,2.4vw,23px);line-height:1.4;color:var(--muted)}
+.grid{display:grid;gap:var(--gap);grid-template-columns:minmax(0,1fr);padding-bottom:56px}
+@media (min-width:640px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (min-width:960px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.area{padding-bottom:12px}
+.area>h2{margin:0 0 18px;font-size:26px}
+.area .grid{padding-bottom:24px}
+.card{display:flex;flex-direction:column;gap:14px;padding:28px;background:var(--white);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 1px 2px rgba(26,54,93,.06);color:inherit;text-decoration:none;transition:border-color .18s,box-shadow .18s,transform .18s}
+.card h3{font-size:24px;line-height:1.2;margin:0}
+.card p{margin:0}
+.card .desc{font-size:17px}
+.card .pill{align-self:flex-start;margin-top:auto}
+.go{display:flex;align-items:center;justify-content:space-between;min-height:48px;margin-top:4px;padding-top:14px;border-top:1px solid var(--line);font-weight:700;color:var(--navy)}
+.go span:last-child{transition:transform .18s}
+@media (hover:hover){
+  .card:hover{border-color:var(--line-strong);box-shadow:0 8px 22px rgba(26,54,93,.10);transform:translateY(-2px)}
+  .card:hover .go span:last-child{transform:translateX(4px)}
+}
+
+/* Página de producto */
+.prod{max-width:880px;margin:0 auto;padding:44px 20px 56px}
+@media (min-width:720px){.prod{padding-left:32px;padding-right:32px}}
+.prod h1{font-size:clamp(34px,5vw,46px);line-height:1.1;letter-spacing:-.01em}
+.prod .pill{margin-top:16px}
+.block{margin-top:var(--gap);padding:28px;border-radius:var(--r)}
+.block h2{margin:0 0 8px;font-family:var(--f-body);font-size:16px;font-weight:700;color:var(--muted)}
+.block p{margin:0;max-width:64ch}
+.pain{background:var(--sand);font-size:19px;line-height:1.6}
+.offer{background:var(--white);border:1px solid var(--line)}
+.cols{display:grid;gap:24px}
+@media (min-width:720px){.cols{grid-template-columns:3fr 2fr;gap:40px}}
+@media (max-width:719px){.block,.card{padding:20px}}
+.block .limits{max-width:none;margin-top:22px;padding-top:18px;border-top:1px solid var(--line);font-size:15.5px;color:var(--muted)}
+.limits strong{color:var(--ink)}
+.access{margin-top:var(--gap)}
+.acc{display:flex;flex-direction:column;justify-content:center;gap:4px;min-height:96px;padding:22px 26px;border-radius:var(--r);text-decoration:none}
+.acc b{font-family:var(--f-head);font-size:24px;line-height:1.2}
+.acc small{font-size:15px;line-height:1.4}
+.acc-on{background:var(--navy);color:var(--white);border:2px solid var(--navy);box-shadow:0 1px 2px rgba(26,54,93,.2)}
+.acc-on small{color:#DCE5F2}
+.acc-on small::after{content:"\00a0→";white-space:nowrap}
+.acc-on:focus-visible{outline-color:var(--navy);outline-offset:4px}
+@media (hover:hover){.acc-on:hover{background:var(--navy-2);border-color:var(--navy-2)}}
+
+footer{max-width:var(--max);margin:0 auto;padding:22px 20px 40px;border-top:1px solid var(--line);font-size:15px;color:var(--muted)}
+footer p{margin:0;max-width:72ch}
+@media (min-width:720px){footer{padding-left:32px;padding-right:32px}}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}.card:hover{transform:none}}
+
+.lede{margin:18px 0 0;font-size:19px;max-width:60ch}
+.block p+p{margin-top:12px}.rate{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:20px}
+input[type=range]{display:block;width:100%;height:48px;accent-color:var(--navy);margin:0}
+output{font-weight:700;color:var(--navy);white-space:nowrap;font-size:24px}
+.small{font-size:15px;color:var(--muted)}
+summary{cursor:pointer;min-height:48px;padding:12px 0;font-weight:600;color:var(--navy)}
+summary:hover{text-decoration:underline}details{border-top:1px solid var(--line);margin-top:16px}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+fieldset{border:0;border-top:1px solid var(--line);padding:16px 0;margin:10px 0}legend{font-weight:700;color:var(--navy)}
+label{display:block;font-size:15px}.field{min-width:0}.field label{font-weight:600}.hint{display:block;margin-top:2px;font-size:14px;line-height:1.35;color:var(--muted)}.ferr{display:block;margin-top:4px;font-size:14px;line-height:1.35}.ferr:empty,.neterr:empty{display:none}.neterr{margin:6px 0 0;font-size:15px}input[type=number]{display:block;width:100%;min-height:48px;font:inherit;color:var(--ink);background:white;border:1px solid var(--muted);border-radius:6px;padding:8px;margin-top:4px}
+input[aria-invalid=true]{border:2px solid #933b2b}.error{color:#933b2b;font-weight:600}
+.offers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin:18px 0}
+.offers p{font-size:15px}.offers b{display:block;color:var(--navy)}
+.rank{padding:0;list-style:none;margin:18px 0}.rank li{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--line)}.rank strong{white-space:nowrap;font-variant-numeric:tabular-nums}
+.rank li:first-child{font-weight:700;color:var(--navy)}
+.steps{padding-left:24px;margin:12px 0}.steps li{margin:8px 0}.cross{font-size:15px;padding-left:20px}
+.bars{list-style:none;padding:0;margin:20px 0}.bars li{margin:14px 0}.barlabel{display:flex;justify-content:space-between;gap:12px;font-size:15px}.track{height:14px;background:var(--sand);margin-top:6px;border-radius:3px;overflow:hidden}.fill{height:100%;background:var(--navy)}
+.lim{padding-left:20px;font-size:16px;margin:0}.lim li{margin:10px 0}
+@media(max-width:600px){.offers{grid-template-columns:1fr;gap:12px}.offers p{border-bottom:1px solid var(--line);padding-bottom:10px}.rate{align-items:flex-start}.fields{grid-template-columns:1fr}.barlabel{font-size:14px}}
+</style>
+</head>
+<body>
+<header class="bar"><a href="../../../../ofertas/index.html">← Volver al producto</a></header>
+<main class="prod">
+<h1>Comparación de ofertas</h1>
+<span class="pill">Simulación · datos sintéticos</span>
+<p class="lede">Distinto precio, distinto flete, distinto plazo. Poné las ofertas en la misma vara: cuánto queda por tonelada, hoy.</p>
+<noscript>Activá JavaScript para usar la calculadora y ver los resultados simulados.</noscript>
+<section class="block offer" aria-labelledby="scene">
+<h2 id="scene">Las ofertas de ejemplo</h2>
+<p>El descuento por calidad o humedad se aplica al precio. Después restamos el flete y llevamos ese neto al valor de hoy.</p>
+<div id="offers" class="offers"></div>
+<div class="rate"><label for="rate">Tasa anual que usás para valorar tu plata</label><output id="rateValue" for="rate"></output></div>
+<input id="rate" type="range" step="1" min="0" max="60" value="30" aria-describedby="rateHelp">
+<p class="small" id="rateHelp">De 0 a 60 %. Una tasa más alta reduce más el valor de los cobros lejanos.</p>
+<details><summary>Editar las ofertas</summary><p class="small">Importes en USD por tonelada. Podés editar cada dato; el resultado se actualiza al cambiarlo.</p><div id="editors"><fieldset><legend>Oferta A</legend><div class="fields"><div class="field"><label for="f-0-0">Precio (USD/t)</label><span class="hint" id="h-0-0">Entre 1 y 10.000. Hasta 2 decimales. Siempre positivo; el tope es de esta demo.</span><input id="f-0-0" type="number" required min="1" max="10000" step="0.01" value="260" data-offer="0" data-field="0" aria-describedby="h-0-0 e-0-0" aria-invalid="false"><span class="ferr error" id="e-0-0"></span></div><div class="field"><label for="f-0-1">Flete (USD/t)</label><span class="hint" id="h-0-1">Entre 0 y 10.000. Hasta 2 decimales. Cero si no hay flete; el tope es de esta demo.</span><input id="f-0-1" type="number" required min="0" max="10000" step="0.01" value="18" data-offer="0" data-field="1" aria-describedby="h-0-1 e-0-1" aria-invalid="false"><span class="ferr error" id="e-0-1"></span></div><div class="field"><label for="f-0-2">Descuento (%)</label><span class="hint" id="h-0-2">Entre 0 y 100. Hasta 2 decimales. Es un porcentaje del precio.</span><input id="f-0-2" type="number" required min="0" max="100" step="0.01" value="2" data-offer="0" data-field="2" aria-describedby="h-0-2 e-0-2" aria-invalid="false"><span class="ferr error" id="e-0-2"></span></div><div class="field"><label for="f-0-3">Plazo de pago (días)</label><span class="hint" id="h-0-3">Entre 0 y 3.650. Número entero. Cero si cobrás hoy; el tope es de esta demo.</span><input id="f-0-3" type="number" required min="0" max="3650" step="1" value="90" data-offer="0" data-field="3" aria-describedby="h-0-3 e-0-3" aria-invalid="false"><span class="ferr error" id="e-0-3"></span></div></div><p class="error neterr" id="n-0"></p></fieldset><fieldset><legend>Oferta B</legend><div class="fields"><div class="field"><label for="f-1-0">Precio (USD/t)</label><span class="hint" id="h-1-0">Entre 1 y 10.000. Hasta 2 decimales. Siempre positivo; el tope es de esta demo.</span><input id="f-1-0" type="number" required min="1" max="10000" step="0.01" value="250" data-offer="1" data-field="0" aria-describedby="h-1-0 e-1-0" aria-invalid="false"><span class="ferr error" id="e-1-0"></span></div><div class="field"><label for="f-1-1">Flete (USD/t)</label><span class="hint" id="h-1-1">Entre 0 y 10.000. Hasta 2 decimales. Cero si no hay flete; el tope es de esta demo.</span><input id="f-1-1" type="number" required min="0" max="10000" step="0.01" value="15" data-offer="1" data-field="1" aria-describedby="h-1-1 e-1-1" aria-invalid="false"><span class="ferr error" id="e-1-1"></span></div><div class="field"><label for="f-1-2">Descuento (%)</label><span class="hint" id="h-1-2">Entre 0 y 100. Hasta 2 decimales. Es un porcentaje del precio.</span><input id="f-1-2" type="number" required min="0" max="100" step="0.01" value="0" data-offer="1" data-field="2" aria-describedby="h-1-2 e-1-2" aria-invalid="false"><span class="ferr error" id="e-1-2"></span></div><div class="field"><label for="f-1-3">Plazo de pago (días)</label><span class="hint" id="h-1-3">Entre 0 y 3.650. Número entero. Cero si cobrás hoy; el tope es de esta demo.</span><input id="f-1-3" type="number" required min="0" max="3650" step="1" value="15" data-offer="1" data-field="3" aria-describedby="h-1-3 e-1-3" aria-invalid="false"><span class="ferr error" id="e-1-3"></span></div></div><p class="error neterr" id="n-1"></p></fieldset><fieldset><legend>Oferta C</legend><div class="fields"><div class="field"><label for="f-2-0">Precio (USD/t)</label><span class="hint" id="h-2-0">Entre 1 y 10.000. Hasta 2 decimales. Siempre positivo; el tope es de esta demo.</span><input id="f-2-0" type="number" required min="1" max="10000" step="0.01" value="245" data-offer="2" data-field="0" aria-describedby="h-2-0 e-2-0" aria-invalid="false"><span class="ferr error" id="e-2-0"></span></div><div class="field"><label for="f-2-1">Flete (USD/t)</label><span class="hint" id="h-2-1">Entre 0 y 10.000. Hasta 2 decimales. Cero si no hay flete; el tope es de esta demo.</span><input id="f-2-1" type="number" required min="0" max="10000" step="0.01" value="12" data-offer="2" data-field="1" aria-describedby="h-2-1 e-2-1" aria-invalid="false"><span class="ferr error" id="e-2-1"></span></div><div class="field"><label for="f-2-2">Descuento (%)</label><span class="hint" id="h-2-2">Entre 0 y 100. Hasta 2 decimales. Es un porcentaje del precio.</span><input id="f-2-2" type="number" required min="0" max="100" step="0.01" value="0" data-offer="2" data-field="2" aria-describedby="h-2-2 e-2-2" aria-invalid="false"><span class="ferr error" id="e-2-2"></span></div><div class="field"><label for="f-2-3">Plazo de pago (días)</label><span class="hint" id="h-2-3">Entre 0 y 3.650. Número entero. Cero si cobrás hoy; el tope es de esta demo.</span><input id="f-2-3" type="number" required min="0" max="3650" step="1" value="0" data-offer="2" data-field="3" aria-describedby="h-2-3 e-2-3" aria-invalid="false"><span class="ferr error" id="e-2-3"></span></div></div><p class="error neterr" id="n-2"></p></fieldset></div></details>
+<p class="error" id="error" role="alert"></p>
+<p class="small">La calculadora corre en tu navegador. No envía ni guarda los datos que ingresás.</p>
+</section>
+<section class="block offer" aria-labelledby="resultTitle">
+<h2 id="resultTitle">Cuánto queda, valuado hoy</h2>
+<div id="results"><p id="winner" role="status" aria-live="polite"></p><ol id="ranking" class="rank"></ol>
+<h3>La cuenta de la oferta A</h3><ol id="steps" class="steps"></ol>
+<p class="small" id="formula"></p>
+<h3>En qué tasa cambia el orden</h3><p class="small">En cada cruce, las ofertas indicadas valen lo mismo. Los cruces se calculan sin redondear.</p><ul id="crossings" class="cross"></ul></div>
+</section>
+<section class="block offer" aria-labelledby="experiment">
+<h2 id="experiment">El mismo experimento en 2.000 conjuntos de ofertas</h2>
+<p>¿En cuántos casos la oferta con mayor precio nominal no es la mejor al hacer la cuenta completa?</p>
+<p id="current" role="status" aria-live="polite"></p>
+<ul id="bars" class="bars"></ul>
+<p class="small">Cada barra usa los mismos conjuntos de ofertas; solo cambia la tasa. Los porcentajes se redondean a enteros. Si alguna oferta de mayor precio empata en el mejor neto, no contamos el caso como desacierto.</p>
+<p class="small">Editar el ejemplo de arriba no cambia este experimento.</p>
+</section>
+<section class="block pain" aria-labelledby="limits">
+<h2 id="limits">Lo que esta simulación no demuestra</h2>
+<ul class="lim">
+<li>Los valores son inventados, no son precios de mercado. No demuestra qué oferta recibirías ni cuánto ahorrarías.</li>
+<li id="ranges">[?] Rangos supuestos, uniformes e independientes: precio de 180 a 320 USD/t; flete de 5 a 45 USD/t; descuento de 0 a 8 %; plazo de 0 a 120 días. No representan la frecuencia real de esas condiciones.</li>
+<li>No incluye impuestos, retenciones, gastos de comercialización ni riesgo de contraparte.</li>
+<li id="assumptions">[?] La tasa es un supuesto tuyo, efectiva anual y en USD. Usamos un año de 365 días, descuento sobre el precio y un único cobro del neto al final del plazo. No modelamos pagos parciales ni flete pagado por adelantado.</li>
+<li id="seed">[?] El ejemplo es ilustrativo. La muestra usa semilla fija 20261026; cambiar los rangos o sus relaciones puede cambiar los porcentajes. No es una estimación del mercado.</li>
+</ul>
+</section>
+</main>
+<script>
+'use strict';
+const D = {"seed":20261026,"n":2000,"year":365,"rate":30,"maxRate":60,"rates":[0,10,20,30,40,50,60],"ranges":[[180,320],[5,45],[0,8],[0,120]],"example":[[260,18,2,90],[250,15,0,15],[245,12,0,0]],"bounds":[[1,10000,0.01],[0,10000,0.01],[0,100,0.01],[0,3650,1]],"labels":["Precio (USD/t)","Flete (USD/t)","Descuento (%)","Plazo de pago (d\u00edas)"],"expected":{"counts":[317,317,315,325,342,366,381],"values":[221.9658063698243,232.47981895903197,233],"crossings":[{"a":0,"b":1,"rate":3.783266131997167},{"a":0,"b":2,"rate":6.780863627745168},{"a":1,"b":2,"rate":23.118666683277908}],"fields":["missing","low","low","","","step","","","","high","high","step","missing","low","low","","","step","","","","high","high","step","missing","low","low","","","step","","","","high","high","step","missing","low","low","","","step","","","","high","high","step"]}};
+/* CORE START */
+const net = o => o[0]*(1-o[2]/100)-o[1];
+const value = (o,r) => net(o)/Math.pow(1+r/100,o[3]/D.year);
+function generate(){
+  let seed=D.seed>>>0;
+  const rand=()=>{seed=(Math.imul(1664525,seed)+1013904223)>>>0;return seed/4294967296;};
+  return Array.from({length:D.n},()=>Array.from({length:3},()=>D.ranges.map(([a,b],i)=>{
+    const scale=i===3?1:100;return (Math.floor(rand()*((b-a)*scale+1))+a*scale)/scale;
+  })));
+}
+function count(sets,r){return sets.filter(set=>{
+  const nominal=Math.max(...set.map(o=>o[0])), best=Math.max(...set.map(o=>value(o,r)));
+  return !set.some(o=>o[0]===nominal&&Math.abs(value(o,r)-best)<1e-9);
+}).length;}
+function crossings(offers){
+  const found=[];
+  for(let a=0;a<offers.length;a++)for(let b=a+1;b<offers.length;b++){
+    const days=offers[a][3]-offers[b][3];
+    if(!days||net(offers[a])<=0||net(offers[b])<=0)continue;
+    const rate=100*Math.expm1(D.year*Math.log(net(offers[a])/net(offers[b]))/days);
+    if(rate>=0&&rate<=D.maxRate)found.push({a,b,rate});
+  }
+  return found.sort((a,b)=>a.rate-b.rate);
+}
+function fieldCode(j,v){   // '' si el dato sirve; si no, por qué no: missing | low | high | step
+  const [lo,hi,step]=D.bounds[j];
+  if(!Number.isFinite(v))return 'missing';
+  if(v<lo)return 'low';
+  if(v>hi)return 'high';
+  const q=(v-lo)/step;
+  return Math.abs(q-Math.round(q))>1e-6?'step':'';
+}
+/* CORE END */
+const $=id=>document.getElementById(id);
+const fmt=(n,d=2)=>n.toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const name=i=>'Oferta '+String.fromCharCode(65+i);
+const assert=(ok,msg)=>{if(!ok)throw new Error('Verificación: '+msg);};
+const sets=generate();
+const offers=D.example.map(o=>o.slice());
+const rate=$('rate');
+/* Rangos, textos de ayuda y límites de los controles los escribe make_demo.py (y los verifica leyendo este HTML). */
+const decs=j=>Math.round(-Math.log10(D.bounds[j][2]));
+const rangeText=j=>`entre ${fmt(D.bounds[j][0],0)} y ${fmt(D.bounds[j][1],0)}`;
+const why={missing:j=>`Falta un número. Tiene que estar ${rangeText(j)}.`,low:j=>`Es menor que el mínimo. Tiene que estar ${rangeText(j)}.`,high:j=>`Supera el máximo. Tiene que estar ${rangeText(j)}.`,step:j=>decs(j)?`Usá hasta ${decs(j)} decimales.`:'Usá un número entero.'};
+document.querySelectorAll('#editors input').forEach(input=>input.addEventListener('input',update));
+function renderBars(){
+  D.rates.forEach((r,i)=>{
+ const n=count(sets,r);assert(n===D.expected.counts[i],'conteo reproducible');
+ const percent=Math.round(n/D.n*100),li=document.createElement('li');
+ li.innerHTML=`<div class="barlabel"><span>Tasa ${fmt(r,0)} %</span><strong>${fmt(percent,0)} % · ${fmt(n,0)} casos</strong></div><div class="track" aria-hidden="true"><div class="fill" style="width:${n/D.n*100}%"></div></div>`;
+ $('bars').append(li);assert(li.querySelector('strong').textContent===`${fmt(Math.round(count(sets,r)/D.n*100),0)} % · ${fmt(count(sets,r),0)} casos`,'barra mostrada');
+ });
+}
+function update(){
+ const r=+rate.value;$('rateValue').textContent=fmt(r,0)+' %';
+ const n=count(sets,r);$('current').textContent=`Con tu tasa: ${fmt(Math.round(n/D.n*100),0)} % (${fmt(n,0)} de ${fmt(D.n,0)} casos).`;
+ const vals=offers.map(()=>[null,null,null,null]),problems=[];
+ document.querySelectorAll('#editors input').forEach(input=>{
+  const i=+input.dataset.offer,j=+input.dataset.field;
+  const v=input.value.trim()===''||input.validity.badInput?NaN:input.valueAsNumber,code=fieldCode(j,v);
+  input.setAttribute('aria-invalid',code?'true':'false');$(`e-${i}-${j}`).textContent=code?why[code](j):'';
+  if(code)problems.push(`${name(i)}, ${D.labels[j]}`);else vals[i][j]=v;
+ });
+ vals.forEach((v,i)=>{
+  const ne=$(`n-${i}`);ne.textContent='';
+  if(v.every(x=>x!==null)){
+   if(net(v)>0)offers[i]=v;
+   else{ne.textContent=`Con estos datos el neto da ${fmt(net(v))} USD/t (precio − descuento − flete). Tiene que ser mayor que cero: bajá el descuento o el flete, o subí el precio.`;problems.push(`${name(i)}, neto`);}
+  }
+ });
+ const valid=problems.length===0;
+ $('error').textContent=valid?'':`Hay ${problems.length} ${problems.length===1?'dato':'datos'} por corregir: ${problems.join('; ')}. El resultado se oculta hasta que estén bien.`;
+ $('results').hidden=!valid;
+ if(!valid){$('offers').textContent='Hay datos por corregir. El resultado se oculta hasta que sean válidos.';return;}
+ $('offers').innerHTML=offers.map((o,i)=>`<p><b>${name(i)}</b>Precio ${fmt(o[0])} USD/t<br>Flete ${fmt(o[1])} USD/t<br>Descuento ${fmt(o[2])} %<br>Cobro a ${fmt(o[3],0)} días</p>`).join('');
+ const ranked=offers.map((o,i)=>({i,v:value(o,r)})).sort((a,b)=>b.v-a.v||a.i-b.i);
+ const best=ranked.filter(x=>Math.abs(x.v-ranked[0].v)<1e-9);
+ $('winner').textContent=best.length>1?`Empatan ${best.map(x=>name(x.i)).join(' y ')}.`:`Con esta tasa, ${name(ranked[0].i)} deja el mayor neto hoy.`;
+ $('ranking').innerHTML=ranked.map(x=>`<li><span>${name(x.i)}</span><strong>${fmt(x.v)} USD/t</strong></li>`).join('');
+ [...$('ranking').querySelectorAll('strong')].forEach((el,i)=>assert(el.textContent===fmt(value(offers[ranked[i].i],r))+' USD/t','neto mostrado'));
+ const o=offers[0],discount=o[0]*o[2]/100,factor=Math.pow(1+r/100,o[3]/D.year);
+ $('steps').innerHTML=[`Descuento: ${fmt(o[0])} × ${fmt(o[2])} % = ${fmt(discount)} USD/t.`,`Neto al cobrar: ${fmt(o[0])} − ${fmt(discount)} − ${fmt(o[1])} = ${fmt(net(o))} USD/t.`,`Valor hoy: ${fmt(net(o))} ÷ ${fmt(factor,5)} = ${fmt(value(o,r))} USD/t.`].map(t=>`<li>${t}</li>`).join('');
+ $('formula').textContent=`El divisor es (1 + ${fmt(r/100,2)}) elevado a (${fmt(o[3],0)}/${fmt(D.year,0)}). Es descuento compuesto con tasa efectiva anual. Mostramos importes redondeados; calculamos con toda la precisión.`;
+ const crosses=crossings(offers);
+ $('crossings').innerHTML=crosses.map(c=>{
+ const after=offers.map((o,i)=>({i,v:value(o,c.rate+1e-5)})).sort((a,b)=>b.v-a.v);
+ return `<li>A ${fmt(c.rate,2)} % se cruzan ${name(c.a)} y ${name(c.b)}. Justo por encima, la mejor es ${name(after[0].i)}.</li>`;
+ }).join('')||`<li>No hay cruces aislados entre ${fmt(0,0)} y ${fmt(D.maxRate,0)} %. Las ofertas con igual neto y plazo empatan en todo el intervalo.</li>`;
+}
+D.example.forEach((o,i)=>assert(Math.abs(value(o,D.rate)-D.expected.values[i])<1e-10,'ejemplo Python/JS'));
+rate.addEventListener('input',update);renderBars();update();
+document.documentElement.dataset.verified='true';
+</script>
+</body>
+</html>

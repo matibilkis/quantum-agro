@@ -1,0 +1,943 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Control de entregas (demo)</title>
+<meta name="description" content="Control de diferencias por entregas: registro editable de entregas de granos, comparación exacta entre lo esperado y lo liquidado y total a revisar de la campaña. Demo con datos ficticios.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#F3F5F2;--ink:#17211B;--ink-2:#33403A;--muted:#55615A;--line:#DCE2DD;--line-2:#C9D1CB;--card:#FFFFFF;--soft:#F3F5F2;--green:#2E6A4C;--green-d:#1E4A34;--green-bg:#E3EEE7;--brick:#A0361C;--amber:#6E4A00;--amber-bg:#F7EBCF;--error:#B3261E;--mono:'IBM Plex Mono',ui-monospace,monospace}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',system-ui,sans-serif;line-height:1.45}
+a{color:var(--green)}a:hover{color:var(--green-d)}
+.wrap{max-width:1240px;margin:0 auto;padding:24px 24px 72px;display:flex;flex-direction:column;gap:20px}
+@media (max-width:640px){.wrap{padding:16px 16px 72px}}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.back{font-size:13px;color:var(--muted);text-decoration:none}
+.back:hover{color:var(--green-d)}
+.lang{display:flex;gap:2px;border:1px solid var(--line-2);border-radius:6px;padding:2px;background:var(--card)}
+.lang button{min-height:32px;padding:4px 10px;background:transparent;color:var(--muted);font-family:var(--mono);font-size:12px;font-weight:500;border-radius:4px}
+.lang button[aria-pressed="true"]{background:var(--ink);color:#FFFFFF}
+header{display:flex;flex-direction:column;gap:6px;padding-bottom:18px;border-bottom:2px solid var(--ink)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.badge{font-size:12px;font-weight:600;padding:3px 8px;border-radius:4px;background:var(--green-bg);color:var(--green-d);display:inline-block;width:fit-content}
+h1{margin:0;font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(26px,3.4vw,34px);line-height:1.1;letter-spacing:-.01em}
+.intro{font-size:14.5px;color:var(--muted);max-width:78ch;margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0}
+@media (max-width:640px){.card{padding:16px}}
+.card h2{margin:0;font-family:'Archivo',sans-serif;font-size:18px;font-weight:700}
+.card h3{margin:0;font-size:14px;font-weight:600}
+.card-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px 16px;flex-wrap:wrap}
+.ticket{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.kicker{display:block;font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.note{font-size:12px;color:var(--muted);margin:0}
+.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.neg{color:var(--brick)}
+/* summary */
+.kpis{display:grid;grid-template-columns:1.35fr 1fr 1fr 1fr;gap:10px}
+@media (max-width:900px){.kpis{grid-template-columns:1fr 1fr}}
+@media (max-width:460px){.kpis{grid-template-columns:1fr}}
+.kpi{display:flex;flex-direction:column;gap:3px;padding:12px 14px;border-radius:8px;background:var(--soft);min-width:0}
+.kpi-label{font-size:12px;color:var(--muted);font-weight:600}
+.kpi-value{font-family:var(--mono);font-size:19px;font-weight:500;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.kpi-sub{font-size:12px;color:var(--muted)}
+.kpi-main{background:var(--ink);color:#FFFFFF}
+.kpi-main .kpi-label,.kpi-main .kpi-sub{color:#C4D0C8}
+.kpi-main .kpi-value{font-size:26px}
+.effects{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:14px}
+.effect-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:560px){.effect-grid{grid-template-columns:1fr}}
+.effect{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:8px}
+.effect span:first-child{font-size:13px;color:var(--ink-2)}
+.effect span:last-child{font-family:var(--mono);font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+/* register */
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.filters button{min-height:36px;padding:6px 12px;border-radius:999px;background:#EEF0EE;color:var(--ink-2);font-size:13px;font-weight:500}
+.filters button:hover{background:var(--line)}
+.filters button[aria-pressed="true"]{background:var(--ink);color:#FFFFFF}
+.filters .count{font-family:var(--mono);font-size:12px;opacity:.75;margin-left:4px}
+.sort{flex-direction:row;align-items:center;gap:8px}
+.table-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table.register{width:100%;border-collapse:collapse;font-size:14px}
+.register th{font-size:12px;font-weight:600;color:var(--muted);text-align:left;padding:10px 12px;background:var(--soft);border-bottom:1px solid var(--line);white-space:nowrap}
+.register th.num{text-align:right;font-family:inherit}
+.register th .unit{font-family:var(--mono);font-weight:400;font-size:11px;margin-left:4px}
+.register td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+.register tbody tr:last-child td{border-bottom:0}
+.register tbody tr{cursor:pointer}
+.register tbody tr:hover{background:#F7F9F7}
+.register tbody tr[aria-current="true"]{background:#EAF1EC;box-shadow:inset 3px 0 0 var(--green)}
+.row-link{background:none;border:0;padding:0;min-height:0;font:inherit;font-weight:600;color:var(--ink);cursor:pointer;text-align:left}
+.row-link:hover{text-decoration:underline}
+.row-sub{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.row-note{display:block;font-size:12px;color:var(--muted);margin-top:4px;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:720px){.hide-sm{display:none}.row-note{display:none}}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.pill-review{background:var(--amber-bg);color:var(--amber)}
+.pill-reviewed{background:var(--green-bg);color:var(--green-d)}
+.pill-match{background:#EEF0EE;color:var(--muted)}
+.register-foot{display:flex;justify-content:space-between;align-items:center;gap:8px 16px;flex-wrap:wrap}
+.link-actions{display:flex;gap:16px;flex-wrap:wrap}
+/* form */
+.workspace{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (min-width:1001px){.workspace .result{position:sticky;top:16px}}
+@media (max-width:1000px){.workspace{grid-template-columns:1fr}}
+.meta{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px}
+@media (max-width:560px){.meta{grid-template-columns:1fr 1fr}.meta label:first-child{grid-column:1/-1}}
+.columns{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:560px){.columns{grid-template-columns:1fr}}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:14px;margin:0;display:flex;flex-direction:column;gap:10px;min-width:0}
+legend{font-size:13px;font-weight:600;padding:0 4px}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+input,select,textarea{padding:10px;border-radius:6px;border:1px solid var(--line-2);background:#FFFFFF;color:var(--ink);font-size:15px;min-height:44px;width:100%;font-family:inherit}
+textarea{min-height:64px;resize:vertical;font-size:14px}
+input.amount{font-family:var(--mono);padding-right:62px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
+input[aria-invalid="true"]{border-color:var(--error);background:#FDF5F4}
+.input-shell{position:relative}
+.input-shell .unit{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:12px;color:var(--muted);pointer-events:none}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+button{padding:10px 16px;min-height:44px;border:0;border-radius:6px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer}
+button:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+button:disabled{opacity:.45;cursor:not-allowed}
+.btn-primary{background:var(--ink);color:#FFFFFF}
+.btn-primary:hover:not(:disabled){background:var(--green)}
+.btn-secondary{background:#EEF0EE;color:var(--ink-2)}
+.btn-secondary:hover:not(:disabled){background:var(--line)}
+.btn-link{background:none;padding:4px 0;min-height:0;color:var(--green);font-weight:600;font-size:13px}
+.btn-link:hover{color:var(--green-d);text-decoration:underline}
+.btn-danger{background:none;color:var(--brick);padding:10px 4px;margin-left:auto}
+.btn-danger:hover{text-decoration:underline}
+.error{font-size:13px;color:var(--error);margin:0}
+/* result */
+.result-empty{font-size:14px;color:var(--muted);margin:0}
+.stack{display:flex;flex-direction:column;gap:14px}
+.result-label{font-size:13px;color:var(--muted);font-weight:600}
+.result-amount{font-family:var(--mono);font-size:30px;font-weight:500;font-variant-numeric:tabular-nums}
+.result-direction{font-size:14px;color:var(--ink-2)}
+table.concepts{width:100%;border-collapse:collapse;font-size:13.5px}
+.concepts th{font-size:12px;font-weight:600;color:var(--muted);text-align:left;padding:0 8px 6px 0}
+.concepts th.num{text-align:right;font-family:inherit;padding-right:0}
+.concepts td{padding:8px 8px 8px 0;border-top:1px solid var(--line)}
+.concepts td.num{padding-right:0}
+.concepts tr.total td{border-top:2px solid var(--ink);font-weight:600}
+.net-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.net-item{display:flex;flex-direction:column;gap:2px;padding:10px;border-radius:8px;background:var(--soft);min-width:0}
+.net-item span:first-child{font-size:12px;color:var(--muted)}
+.net-item span:last-child{font-family:var(--mono);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+details{font-size:13px}
+summary{cursor:pointer;color:var(--green);font-weight:600}
+.formula{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);margin:6px 0 0;overflow-wrap:anywhere}
+.review{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:14px}
+.review-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+/* notice */
+.notice{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:10;display:flex;align-items:center;gap:14px;max-width:calc(100% - 32px);width:max-content;padding:10px 16px;border-radius:8px;background:var(--ink);color:#FFFFFF;font-size:13.5px;box-shadow:0 6px 24px rgba(23,33,27,.25)}
+.notice .btn-link{color:#BFE3CC}
+footer{font-size:12px;color:var(--muted);padding-top:8px;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="topbar">
+<a class="back" href="../../../entregas/index.html" data-i18n="back">&larr; Volver al portfolio AGRO</a>
+<div class="lang" role="group" aria-label="Idioma" data-i18n-aria="lang-label">
+<button type="button" data-lang="es" lang="es" aria-pressed="true">ES</button>
+<button type="button" data-lang="pt" lang="pt" aria-pressed="false">PT</button>
+<button type="button" data-lang="en" lang="en" aria-pressed="false">EN</button>
+</div>
+</div>
+
+<header>
+<div class="eyebrow" data-i18n="eyebrow"></div>
+<span class="badge" data-i18n="badge"></span>
+<h1 data-i18n="ag-demo-title"></h1>
+<p class="intro" data-i18n="intro"></p>
+<p class="note" data-i18n="privacy"></p>
+</header>
+
+<section class="card" aria-labelledby="summary-title">
+<div class="card-head">
+<h2 id="summary-title" data-i18n="summary"></h2>
+<span class="ticket" id="summary-count"></span>
+</div>
+<div class="kpis">
+<div class="kpi kpi-main"><span class="kpi-label" data-i18n="kpi-review"></span><span class="kpi-value" id="kpi-review"></span><span class="kpi-sub" id="kpi-review-sub"></span></div>
+<div class="kpi"><span class="kpi-label" data-i18n="ag-net-delta"></span><span class="kpi-value" id="kpi-delta"></span><span class="kpi-sub" data-i18n="kpi-delta-sub"></span></div>
+<div class="kpi"><span class="kpi-label" data-i18n="ag-net-expected"></span><span class="kpi-value" id="kpi-expected"></span></div>
+<div class="kpi"><span class="kpi-label" data-i18n="ag-net-settled"></span><span class="kpi-value" id="kpi-settled"></span></div>
+</div>
+<div class="effects">
+<h3 data-i18n="effects"></h3>
+<p class="note" data-i18n="effects-note"></p>
+<div class="effect-grid">
+<div class="effect"><span data-i18n="ag-kg"></span><span id="sum-effect-kg"></span></div>
+<div class="effect"><span data-i18n="ag-price"></span><span id="sum-effect-price"></span></div>
+<div class="effect"><span data-i18n="ag-charges"></span><span id="sum-effect-charges"></span></div>
+</div>
+</div>
+</section>
+
+<section class="card" aria-labelledby="register-title">
+<div class="card-head">
+<h2 id="register-title" data-i18n="register"></h2>
+<button type="button" class="btn-primary" id="new-delivery" data-i18n="new"></button>
+</div>
+<div class="toolbar">
+<div class="filters" role="group" aria-label="Filtrar entregas" data-i18n-aria="filter-label">
+<button type="button" data-filter="all" aria-pressed="true"><span data-i18n="filter-all"></span><span class="count" id="count-all"></span></button>
+<button type="button" data-filter="review" aria-pressed="false"><span data-i18n="filter-review"></span><span class="count" id="count-review"></span></button>
+<button type="button" data-filter="reviewed" aria-pressed="false"><span data-i18n="filter-reviewed"></span><span class="count" id="count-reviewed"></span></button>
+<button type="button" data-filter="match" aria-pressed="false"><span data-i18n="filter-match"></span><span class="count" id="count-match"></span></button>
+</div>
+<label class="sort"><span data-i18n="sort"></span>
+<select id="sort" style="width:auto;min-height:36px;padding:6px 10px;font-size:13px">
+<option value="date" data-i18n="sort-date"></option>
+<option value="diff" data-i18n="sort-diff"></option>
+</select>
+</label>
+</div>
+<div class="table-scroll">
+<table class="register">
+<caption class="sr-only" data-i18n="register"></caption>
+<thead><tr>
+<th scope="col" data-i18n="col-ticket"></th>
+<th scope="col" class="num hide-sm"><span data-i18n="ag-net-expected"></span><span class="unit">ARS</span></th>
+<th scope="col" class="num hide-sm"><span data-i18n="ag-net-settled"></span><span class="unit">ARS</span></th>
+<th scope="col" class="num"><span data-i18n="col-diff"></span><span class="unit">ARS</span></th>
+<th scope="col" data-i18n="col-status"></th>
+</tr></thead>
+<tbody id="rows"></tbody>
+</table>
+</div>
+<p class="result-empty" id="register-empty" hidden></p>
+<div class="register-foot">
+<p class="note" data-i18n="storage"></p>
+<div class="link-actions">
+<button type="button" class="btn-link" id="export" data-i18n="export"></button>
+<button type="button" class="btn-link" id="restore" data-i18n="restore"></button>
+<button type="button" class="btn-link" id="clear" data-i18n="clear"></button>
+</div>
+</div>
+</section>
+
+<div class="workspace" id="workspace">
+<form id="delivery-form" class="card" novalidate>
+<div class="card-head">
+<div><span class="kicker" id="form-kicker"></span><h2 id="form-title"></h2></div>
+<span class="ticket" id="form-state"></span>
+</div>
+<div class="meta">
+<label><span data-i18n="col-ticket"></span><input id="f-ticket" type="text" autocomplete="off" maxlength="40" data-i18n-ph="ticket-ph"></label>
+<label><span data-i18n="col-date"></span><input id="f-date" type="date"></label>
+<label><span data-i18n="col-grain"></span><select id="f-grain"></select></label>
+</div>
+<p class="note" data-i18n="ag-currency"></p>
+<div class="columns">
+<fieldset>
+<legend data-i18n="ag-expected"></legend>
+<p class="note" data-i18n="ag-expected-note"></p>
+<label><span data-i18n="ag-kg"></span><span class="input-shell"><input class="amount" id="expected-kg" type="text" inputmode="decimal" autocomplete="off" aria-describedby="delivery-error"><span class="unit">kg</span></span></label>
+<label><span data-i18n="ag-price"></span><span class="input-shell"><input class="amount" id="expected-price" type="text" inputmode="decimal" autocomplete="off" aria-describedby="delivery-error"><span class="unit">ARS/t</span></span></label>
+<label><span data-i18n="ag-charges"></span><span class="input-shell"><input class="amount" id="expected-charges" type="text" inputmode="decimal" autocomplete="off" aria-describedby="delivery-error"><span class="unit">ARS</span></span></label>
+</fieldset>
+<fieldset>
+<legend data-i18n="ag-settled"></legend>
+<p class="note" data-i18n="ag-settled-note"></p>
+<label><span data-i18n="ag-kg"></span><span class="input-shell"><input class="amount" id="settled-kg" type="text" inputmode="decimal" autocomplete="off" aria-describedby="delivery-error"><span class="unit">kg</span></span></label>
+<label><span data-i18n="ag-price"></span><span class="input-shell"><input class="amount" id="settled-price" type="text" inputmode="decimal" autocomplete="off" aria-describedby="delivery-error"><span class="unit">ARS/t</span></span></label>
+<label><span data-i18n="ag-charges"></span><span class="input-shell"><input class="amount" id="settled-charges" type="text" inputmode="decimal" autocomplete="off" aria-describedby="delivery-error"><span class="unit">ARS</span></span></label>
+<button type="button" class="btn-link" id="copy-expected" data-i18n="copy-expected" style="align-self:flex-start"></button>
+</fieldset>
+</div>
+<p class="note" data-i18n="input-hint"></p>
+<p class="error" id="delivery-error" role="alert" hidden data-i18n="ag-invalid"></p>
+<div class="actions">
+<button type="submit" class="btn-primary" id="save"></button>
+<button type="button" class="btn-secondary" id="discard" data-i18n="discard"></button>
+<button type="button" class="btn-danger" id="delete" data-i18n="delete"></button>
+</div>
+</form>
+
+<section class="card result" aria-labelledby="result-title">
+<div class="card-head"><h2 id="result-title" data-i18n="ag-result"></h2><span class="ticket" id="result-ticket"></span></div>
+<p id="delivery-empty" class="result-empty"><strong data-i18n="ag-empty-title"></strong><br><span data-i18n="ag-empty-desc"></span></p>
+<div id="delivery-results" class="stack" hidden>
+<div>
+<div class="result-label" id="delivery-summary-label"></div>
+<div class="result-amount" id="delivery-amount"></div>
+<div class="result-direction" id="delivery-direction"></div>
+</div>
+<table class="concepts">
+<thead><tr><th scope="col" data-i18n="col-concept"></th><th scope="col" class="num" data-i18n="col-diff"></th><th scope="col" class="num" data-i18n="col-effect"></th></tr></thead>
+<tbody>
+<tr><td data-i18n="ag-kg"></td><td class="num" id="diff-kg"></td><td class="num" id="effect-kg"></td></tr>
+<tr><td data-i18n="ag-price"></td><td class="num" id="diff-price"></td><td class="num" id="effect-price"></td></tr>
+<tr><td data-i18n="ag-charges"></td><td class="num" id="diff-charges"></td><td class="num" id="effect-charges"></td></tr>
+<tr class="total"><td colspan="2" data-i18n="ag-net-delta"></td><td class="num" id="effect-total"></td></tr>
+</tbody>
+</table>
+<div class="net-grid">
+<div class="net-item"><span data-i18n="ag-net-expected"></span><span id="net-expected"></span></div>
+<div class="net-item"><span data-i18n="ag-net-settled"></span><span id="net-settled"></span></div>
+</div>
+<details id="calc">
+<summary data-i18n="ag-calculation"></summary>
+<p class="formula" id="formula-expected"></p>
+<p class="formula" id="formula-settled"></p>
+<p class="formula" id="formula-delta"></p>
+<p class="formula" id="formula-kg"></p>
+<p class="formula" id="formula-price"></p>
+<p class="formula" id="formula-charges"></p>
+<p class="note" style="margin-top:8px"><span data-i18n="ag-formula"></span> <span data-i18n="ag-sign"></span></p>
+<p class="note" style="margin-top:6px" data-i18n="decomp-note"></p>
+</details>
+<div class="review" id="review">
+<div class="review-head"><h3 data-i18n="review"></h3><span class="pill" id="review-pill"></span></div>
+<p class="note" data-i18n="ag-review-note"></p>
+<label><span data-i18n="review-note-label"></span><textarea id="review-note" rows="2" maxlength="280" data-i18n-ph="review-note-ph"></textarea></label>
+<div class="actions"><button type="button" class="btn-secondary" id="review-toggle"></button><span class="note" id="review-hint"></span></div>
+</div>
+</div>
+</section>
+</div>
+
+</div>
+
+<div class="notice" id="notice" hidden><span id="notice-text"></span><button type="button" class="btn-link" id="undo" data-i18n="undo" hidden></button></div>
+<p class="sr-only" id="announce" role="status" aria-live="polite" aria-atomic="true"></p>
+<noscript><p style="text-align:center">Activá JavaScript para usar el control de entregas. / Ative o JavaScript. / Enable JavaScript.</p></noscript>
+
+<script>
+'use strict';
+
+/* ENGINE:START — exact arithmetic in cents with BigInt. No floats touch the values.
+   Inputs are parsed from their text straight into integer cents; nets, differences
+   and per-concept effects are BigInt end to end, including campaign totals. */
+const MAX_CENTS = 1000000000n; // 10.000.000,00
+
+// Accepts "29800", "29.800", "29800,5", "278.000,50", "278,000.50", "1.5".
+// Rules (locale independent): if both "." and "," appear, the last one is the
+// decimal separator. If only one kind appears, it is a thousands separator when it
+// repeats or is followed by exactly three digits; otherwise it is the decimal one.
+// At most two decimals. Returns integer cents (BigInt) or null.
+function parseCents(raw) {
+  const s = String(raw ?? '').replace(/[\s  ]/g, '');
+  if (!s || !/^[\d.,]+$/.test(s)) return null;
+  const groups = (str, sep) => {
+    const parts = str.split(sep);
+    return /^[1-9]\d{0,2}$/.test(parts[0]) && parts.slice(1).every(p => /^\d{3}$/.test(p)) ? parts.join('') : null;
+  };
+  const dot = s.lastIndexOf('.'), comma = s.lastIndexOf(',');
+  let int = s, dec = '';
+  if (dot >= 0 && comma >= 0) {
+    const decSep = dot > comma ? '.' : ',', i = s.lastIndexOf(decSep);
+    int = s.slice(0, i); dec = s.slice(i + 1);
+    if (int.includes(decSep)) return null;
+    int = groups(int, decSep === '.' ? ',' : '.');
+  } else if (dot >= 0 || comma >= 0) {
+    const sep = dot >= 0 ? '.' : ',', parts = s.split(sep);
+    if (parts.length > 2 || parts[1].length === 3) int = groups(s, sep);
+    else { int = parts[0]; dec = parts[1]; }
+  }
+  if (!int || !/^\d+$/.test(int) || !/^\d{0,2}$/.test(dec)) return null;
+  const cents = BigInt(int) * 100n + BigInt((dec + '00').slice(0, 2));
+  return cents <= MAX_CENTS ? cents : null;
+}
+
+// Integer division rounding half away from zero.
+const roundDiv = (a, b) => a >= 0n ? (a + b / 2n) / b : -((-a + b / 2n) / b);
+// kg(cents) × price(cents per tonne) / 100 / 100 / 1000 tonnes → ARS; × 100 → cents.
+const netCents = v => roundDiv(v.kg * v.price, 100000n) - v.charges;
+
+// Net difference split into three effects that add up exactly (to the cent):
+//   kilos  = (kg_s − kg_e) at the expected price
+//   price  = (p_s − p_e) on the settled kilos (takes the rounding remainder)
+//   charges = −(c_s − c_e)
+// A concept with no difference always gets a zero effect.
+function compare(e, s) {
+  const expectedNet = netCents(e), settledNet = netCents(s), delta = settledNet - expectedNet;
+  const diff = { kg: s.kg - e.kg, price: s.price - e.price, charges: s.charges - e.charges };
+  const charges = -diff.charges;
+  const kg = diff.price === 0n ? delta - charges : roundDiv(diff.kg * e.price, 100000n);
+  const price = delta - kg - charges;
+  const same = diff.kg === 0n && diff.price === 0n && diff.charges === 0n;
+  return { expectedNet, settledNet, delta, diff, effect: { kg, price, charges }, same };
+}
+/* ENGINE:END */
+
+/* ---------- Copy (ES / PT / EN). Base strings come from agro.js; the rest is new. ---------- */
+const COPY = {
+  'doc-title': ['Control de entregas (demo)', 'Conferência de entregas (demo)', 'Delivery checks (demo)'],
+  'back': ['← Volver al producto', '← Voltar ao produto', '← Back to the product'],
+  'lang-label': ['Idioma', 'Idioma', 'Language'],
+  'eyebrow': ['Control de entregas', 'Conferência de entregas', 'Delivery checks'],
+  'privacy': ['Lo que cargues se guarda solo en este navegador. No se envía a ningún servidor.', 'O que você registrar fica salvo apenas neste navegador. Nada é enviado a servidor algum.', 'What you enter is stored only in this browser. Nothing is sent to a server.'],
+  'badge': ['DEMO · datos ficticios', 'DEMO · dados fictícios', 'DEMO · fictional data'],
+  'ag-demo-title': ['Cada entrega, con las cuentas claras.', 'Cada entrega, com as contas claras.', 'A clearer picture of every delivery.'],
+  'intro': ['Compará lo esperado con lo liquidado en cada entrega y encontrá las diferencias que merecen una segunda mirada. El resumen suma lo que queda por revisar en toda la campaña.', 'Compare o esperado com o liquidado em cada entrega e encontre as diferenças que merecem uma segunda análise. O resumo soma o que falta revisar em toda a campanha.', 'Compare expected and settled amounts for each delivery, and find the differences worth a closer look. The summary adds up what is still to review across the campaign.'],
+  'summary': ['Resumen de la campaña', 'Resumo da campanha', 'Campaign summary'],
+  'count-deliveries': [['{n} entrega', '{n} entregas'], ['{n} entrega', '{n} entregas'], ['{n} delivery', '{n} deliveries']],
+  'count-diff': ['{n} con diferencias', '{n} com diferenças', '{n} with differences'],
+  'count-reviewed': [['{n} revisada', '{n} revisadas'], ['{n} revisada', '{n} revisadas'], ['{n} reviewed', '{n} reviewed']],
+  'kpi-review': ['A revisar', 'A revisar', 'To review'],
+  'kpi-pending': [['{n} entrega pendiente', '{n} entregas pendientes'], ['{n} entrega pendente', '{n} entregas pendentes'], ['{n} delivery pending', '{n} deliveries pending']],
+  'kpi-below': ['{v} por debajo', '{v} abaixo', '{v} below'],
+  'kpi-above': ['{v} por encima', '{v} acima', '{v} above'],
+  'kpi-none': ['Nada pendiente de revisión.', 'Nada pendente de revisão.', 'Nothing pending review.'],
+  'kpi-delta-sub': ['Liquidado − esperado, todas las entregas', 'Liquidado − esperado, todas as entregas', 'Settled − expected, all deliveries'],
+  'effects': ['De dónde viene la diferencia', 'De onde vem a diferença', 'Where the difference comes from'],
+  'effects-note': ['Efecto acumulado de cada concepto en el neto, sumando todas las entregas.', 'Efeito acumulado de cada item no líquido, somando todas as entregas.', 'Cumulative effect of each item on the net amount, across all deliveries.'],
+  'register': ['Registro de entregas', 'Registro de entregas', 'Delivery log'],
+  'new': ['+ Nueva entrega', '+ Nova entrega', '+ New delivery'],
+  'filter-label': ['Filtrar entregas', 'Filtrar entregas', 'Filter deliveries'],
+  'filter-all': ['Todas', 'Todas', 'All'],
+  'filter-review': ['A revisar', 'A revisar', 'To review'],
+  'filter-reviewed': ['Revisadas', 'Revisadas', 'Reviewed'],
+  'filter-match': ['Coinciden', 'Conferem', 'Matching'],
+  'sort': ['Ordenar', 'Ordenar', 'Sort'],
+  'sort-date': ['Por fecha', 'Por data', 'By date'],
+  'sort-diff': ['Mayor diferencia', 'Maior diferença', 'Largest difference'],
+  'col-ticket': ['Comprobante', 'Comprovante', 'Reference'],
+  'col-date': ['Fecha', 'Data', 'Date'],
+  'col-grain': ['Grano', 'Grão', 'Grain'],
+  'col-diff': ['Diferencia', 'Diferença', 'Difference'],
+  'col-status': ['Estado', 'Status', 'Status'],
+  'col-concept': ['Concepto', 'Item', 'Item'],
+  'col-effect': ['Efecto en el neto', 'Efeito no líquido', 'Effect on net'],
+  'status-review': ['A revisar', 'A revisar', 'To review'],
+  'status-reviewed': ['Revisada', 'Revisada', 'Reviewed'],
+  'status-match': ['Coincide', 'Confere', 'Matches'],
+  'no-ticket': ['Sin comprobante', 'Sem comprovante', 'No reference'],
+  'register-empty': ['Todavía no hay entregas en el registro. Cargá la primera con el formulario o restaurá el ejemplo.', 'Ainda não há entregas no registro. Cadastre a primeira no formulário ou restaure o exemplo.', 'No deliveries in the log yet. Add one with the form, or restore the example.'],
+  'filter-empty': ['Ninguna entrega en esta vista.', 'Nenhuma entrega nesta visualização.', 'No deliveries in this view.'],
+  'storage': ['Ejemplo simplificado: sin impuestos ni ajustes por calidad. El registro se guarda solo en este navegador.', 'Exemplo simplificado: sem impostos ou ajustes de qualidade. O registro fica salvo apenas neste navegador.', 'Simplified example: no taxes or quality adjustments. The log is stored only in this browser.'],
+  'export': ['Exportar CSV', 'Exportar CSV', 'Export CSV'],
+  'restore': ['Restaurar ejemplo', 'Restaurar exemplo', 'Reset example'],
+  'clear': ['Vaciar registro', 'Limpar registro', 'Clear log'],
+  'undo': ['Deshacer', 'Desfazer', 'Undo'],
+  'n-saved': ['Entrega guardada en el registro.', 'Entrega salva no registro.', 'Delivery saved to the log.'],
+  'n-updated': ['Cambios guardados.', 'Alterações salvas.', 'Changes saved.'],
+  'n-review-reset': ['Cambios guardados. Los valores cambiaron: la entrega vuelve a estar pendiente de revisión.', 'Alterações salvas. Os valores mudaram: a entrega volta a ficar pendente de revisão.', 'Changes saved. The values changed, so the delivery is pending review again.'],
+  'n-deleted': ['Entrega eliminada.', 'Entrega excluída.', 'Delivery deleted.'],
+  'n-cleared': ['Registro vaciado.', 'Registro limpo.', 'Log cleared.'],
+  'n-restored': ['Ejemplo restaurado.', 'Exemplo restaurado.', 'Example restored.'],
+  'n-reviewed': ['Entrega marcada como revisada.', 'Entrega marcada como revisada.', 'Delivery marked as reviewed.'],
+  'n-pending': ['La entrega vuelve a estar pendiente de revisión.', 'A entrega volta a ficar pendente de revisão.', 'The delivery is pending review again.'],
+  'n-storage': ['No se pudo guardar en este navegador: los cambios se pierden al cerrar la página.', 'Não foi possível salvar neste navegador: as alterações se perdem ao fechar a página.', 'Could not save in this browser: changes are lost when the page closes.'],
+  'confirm-discard': ['Hay cambios sin guardar en la entrega. ¿Descartarlos?', 'Há alterações não salvas na entrega. Descartá-las?', 'This delivery has unsaved changes. Discard them?'],
+  'form-new-kicker': ['Nueva entrega', 'Nova entrega', 'New delivery'],
+  'form-new-title': ['Cargá los valores de la entrega', 'Preencha os valores da entrega', 'Enter the delivery values'],
+  'form-edit-kicker': ['Editar entrega', 'Editar entrega', 'Edit delivery'],
+  'state-unsaved': ['Cambios sin guardar', 'Alterações não salvas', 'Unsaved changes'],
+  'state-saved': ['Guardada', 'Salva', 'Saved'],
+  'ticket-ph': ['Carta de porte, ticket o CTG', 'Romaneio, ticket ou nota', 'Waybill, ticket or reference'],
+  'grain-maiz': ['Maíz', 'Milho', 'Corn'],
+  'grain-soja': ['Soja', 'Soja', 'Soybeans'],
+  'grain-trigo': ['Trigo', 'Trigo', 'Wheat'],
+  'grain-girasol': ['Girasol', 'Girassol', 'Sunflower'],
+  'grain-sorgo': ['Sorgo', 'Sorgo', 'Sorghum'],
+  'grain-cebada': ['Cebada', 'Cevada', 'Barley'],
+  'ag-currency': ['Todos los importes en pesos argentinos (ARS).', 'Todos os valores em pesos argentinos (ARS).', 'All amounts in Argentine pesos (ARS).'],
+  'ag-expected': ['Lo esperado', 'O esperado', 'Expected'],
+  'ag-settled': ['Lo liquidado', 'O liquidado', 'Settled'],
+  'ag-expected-note': ['Valores de referencia de esta entrega', 'Valores de referência desta entrega', 'Reference values for this delivery'],
+  'ag-settled-note': ['Valores registrados en la liquidación', 'Valores registrados na liquidação', 'Values recorded in the settlement'],
+  'ag-kg': ['Kilos', 'Quilos', 'Weight'],
+  'ag-price': ['Precio por tonelada', 'Preço por tonelada', 'Price per tonne'],
+  'ag-charges': ['Cargos totales', 'Encargos totais', 'Total charges'],
+  'copy-expected': ['Copiar lo esperado', 'Copiar o esperado', 'Copy expected'],
+  'input-hint': ['Podés escribir 29800, 29.800 o 278.000,50: al salir del campo se muestra cómo se interpretó.', 'Você pode digitar 29800, 29.800 ou 278.000,50: ao sair do campo, aparece como foi interpretado.', 'You can type 29800, 29,800 or 278,000.50: when you leave the field it shows how it was read.'],
+  'ag-invalid': ['Revisá los campos marcados: valores entre 0 y 10.000.000, con hasta dos decimales.', 'Confira os campos marcados: valores entre 0 e 10.000.000, com até duas casas decimais.', 'Check the highlighted fields: values from 0 to 10,000,000, with up to two decimal places.'],
+  'save-new': ['Guardar en el registro', 'Salvar no registro', 'Save to log'],
+  'save-edit': ['Guardar cambios', 'Salvar alterações', 'Save changes'],
+  'discard': ['Descartar cambios', 'Descartar alterações', 'Discard changes'],
+  'delete': ['Eliminar entrega', 'Excluir entrega', 'Delete delivery'],
+  'ag-result': ['Resultado de la comparación', 'Resultado da comparação', 'Comparison result'],
+  'ag-empty-title': ['Una entrega. Dos versiones.', 'Uma entrega. Duas versões.', 'One delivery. Two versions.'],
+  'ag-empty-desc': ['Completá los seis valores para ver las diferencias de kilos, precio y cargos, y su efecto en el neto.', 'Preencha os seis valores para ver as diferenças de peso, preço e encargos, e seu efeito no valor líquido.', 'Fill in the six values to see differences in weight, price and charges, and their effect on the net amount.'],
+  'ag-review': ['Diferencia neta a revisar', 'Diferença líquida a revisar', 'Net difference to review'],
+  'ag-below': ['Liquidado por debajo de lo esperado.', 'Liquidado abaixo do esperado.', 'Settled below the expected amount.'],
+  'ag-above': ['Liquidado por encima de lo esperado.', 'Liquidado acima do esperado.', 'Settled above the expected amount.'],
+  'ag-match': ['Todo coincide', 'Tudo confere', 'Everything matches'],
+  'ag-match-desc': ['Kilos, precio y cargos coinciden con los valores esperados.', 'Peso, preço e encargos correspondem aos valores esperados.', 'Weight, price and charges match the expected values.'],
+  'ag-offset': ['El neto coincide. Hay diferencias por concepto.', 'O líquido confere. Há diferenças por item.', 'The net matches. Individual items differ.'],
+  'ag-review-note': ['Una diferencia puede tener una explicación válida. Revisá sus conceptos antes de sacar conclusiones.', 'Uma diferença pode ter uma explicação válida. Confira os itens antes de tirar conclusões.', 'A difference may have a valid explanation. Review the items before drawing conclusions.'],
+  'ag-net-expected': ['Neto esperado', 'Líquido esperado', 'Expected net'],
+  'ag-net-settled': ['Neto liquidado', 'Líquido liquidado', 'Settled net'],
+  'ag-net-delta': ['Diferencia neta', 'Diferença líquida', 'Net difference'],
+  'ag-calculation': ['Ver las cuentas', 'Ver os cálculos', 'See the calculations'],
+  'ag-formula': ['Neto = kilos ÷ 1.000 × precio por tonelada − cargos.', 'Líquido = quilos ÷ 1.000 × preço por tonelada − encargos.', 'Net = kilograms ÷ 1,000 × price per tonne − charges.'],
+  'ag-sign': ['Diferencias = liquidado − esperado. El neto se compara por separado para no contar dos veces los efectos de kilos y precio.', 'Diferenças = liquidado − esperado. O líquido é comparado separadamente para não contar duas vezes os efeitos de peso e preço.', 'Differences = settled − expected. Net amounts are compared separately to avoid counting weight and price effects twice.'],
+  'decomp-note': ['Efecto de kilos: la diferencia de kilos al precio esperado. Efecto de precio: la diferencia de precio sobre los kilos liquidados. Efecto de cargos: la diferencia de cargos, que resta. Todo se calcula en centavos exactos; el redondeo, si lo hay, se asigna para que los tres sumen la diferencia neta al centavo.', 'Efeito de peso: a diferença de quilos ao preço esperado. Efeito de preço: a diferença de preço sobre os quilos liquidados. Efeito de encargos: a diferença de encargos, que subtrai. Tudo é calculado em centavos exatos; o arredondamento, se houver, é alocado para que os três somem a diferença líquida ao centavo.', 'Weight effect: the weight difference at the expected price. Price effect: the price difference on the settled weight. Charges effect: the charges difference, which subtracts. Everything is computed in exact cents; any rounding is allocated so the three add up to the net difference to the cent.'],
+  'ag-same': ['Coincide', 'Confere', 'Matches'],
+  'f-expected': ['Esperado', 'Esperado', 'Expected'],
+  'f-settled': ['Liquidado', 'Liquidado', 'Settled'],
+  'review': ['Revisión', 'Revisão', 'Review'],
+  'review-note-label': ['Explicación o próximo paso', 'Explicação ou próximo passo', 'Explanation or next step'],
+  'review-note-ph': ['Ej.: merma por humedad según análisis; reclamo enviado al acopio.', 'Ex.: quebra por umidade conforme análise; reclamação enviada ao armazém.', 'E.g. moisture shrink per lab analysis; claim sent to the elevator.'],
+  'review-mark': ['Marcar como revisada', 'Marcar como revisada', 'Mark as reviewed'],
+  'review-unmark': ['Volver a pendiente', 'Voltar para pendente', 'Mark as pending'],
+  'review-hint-new': ['Guardá la entrega en el registro para registrar la revisión.', 'Salve a entrega no registro para registrar a revisão.', 'Save the delivery to the log to record the review.'],
+  'review-hint-dirty': ['Guardá los cambios para actualizar la revisión.', 'Salve as alterações para atualizar a revisão.', 'Save your changes to update the review.'],
+  'review-hint-done': ['Ya no suma al total a revisar.', 'Não soma mais ao total a revisar.', 'No longer counted in the total to review.'],
+  'review-hint-pending': ['Suma al total a revisar de la campaña.', 'Soma ao total a revisar da campanha.', 'Counted in the campaign total to review.'],
+  'sample-note': ['Merma por humedad según el análisis de calidad (ejemplo).', 'Quebra por umidade conforme a análise de qualidade (exemplo).', 'Moisture shrink per the quality analysis (example).'],
+  'csv-file': ['control-de-entregas', 'conferencia-de-entregas', 'delivery-checks'],
+  'csv-head': ['Comprobante|Fecha|Grano|Kilos esperados|Precio esperado (ARS/t)|Cargos esperados (ARS)|Neto esperado (ARS)|Kilos liquidados|Precio liquidado (ARS/t)|Cargos liquidados (ARS)|Neto liquidado (ARS)|Diferencia neta (ARS)|Efecto kilos (ARS)|Efecto precio (ARS)|Efecto cargos (ARS)|Estado|Nota', 'Comprovante|Data|Grão|Quilos esperados|Preço esperado (ARS/t)|Encargos esperados (ARS)|Líquido esperado (ARS)|Quilos liquidados|Preço liquidado (ARS/t)|Encargos liquidados (ARS)|Líquido liquidado (ARS)|Diferença líquida (ARS)|Efeito peso (ARS)|Efeito preço (ARS)|Efeito encargos (ARS)|Status|Nota', 'Reference|Date|Grain|Expected kg|Expected price (ARS/t)|Expected charges (ARS)|Expected net (ARS)|Settled kg|Settled price (ARS/t)|Settled charges (ARS)|Settled net (ARS)|Net difference (ARS)|Weight effect (ARS)|Price effect (ARS)|Charges effect (ARS)|Status|Note'],
+};
+const LANGS = ['es', 'pt', 'en'];
+const LOCALES = { es: 'es-AR', pt: 'pt-BR', en: 'en-US' };
+const GRAINS = ['maiz', 'soja', 'trigo', 'girasol', 'sorgo', 'cebada'];
+const FIELDS = ['kg', 'price', 'charges'];
+const GROUPS = ['expected', 'settled'];
+const UNITS = { kg: 'kg', price: 'ARS/t', charges: 'ARS' };
+let lang = 'es';
+
+function t(key, vars = {}) {
+  const row = COPY[key];
+  if (!row) return key;
+  let s = row[LANGS.indexOf(lang)] ?? row[0];
+  if (Array.isArray(s)) s = vars.n === 1 ? s[0] : s[1];
+  return s.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
+}
+
+/* ---------- Formatting (BigInt cents → text, no floats) ---------- */
+let nfInt, decSep;
+function setFormatters() {
+  nfInt = new Intl.NumberFormat(LOCALES[lang], { useGrouping: 'always', maximumFractionDigits: 0 });
+  decSep = new Intl.NumberFormat(LOCALES[lang]).formatToParts(1.5).find(p => p.type === 'decimal').value;
+}
+const abs = c => c < 0n ? -c : c;
+const sign = (c, plus) => c < 0n ? '−' : plus && c > 0n ? '+' : '';
+// Money: always two decimals. "ARS −125.600,00"
+const money = (c, plus = false) => `ARS ${sign(c, plus)}${nfInt.format(abs(c) / 100n)}${decSep}${String(abs(c) % 100n).padStart(2, '0')}`;
+// Bare amount for table cells: "−125.600,00"
+const amount = (c, plus = false) => `${sign(c, plus)}${nfInt.format(abs(c) / 100n)}${decSep}${String(abs(c) % 100n).padStart(2, '0')}`;
+// Quantity: decimals only when present. "29.800" / "29.800,5"
+const qty = c => {
+  const d = String(abs(c) % 100n).padStart(2, '0').replace(/0+$/, '');
+  return `${sign(c)}${nfInt.format(abs(c) / 100n)}${d ? decSep + d : ''}`;
+};
+// Input value: grouped, two decimals only when not whole. Round-trips through parseCents.
+const inputText = c => c % 100n === 0n ? nfInt.format(c / 100n) : `${nfInt.format(c / 100n)}${decSep}${String(c % 100n).padStart(2, '0')}`;
+const fmtDate = iso => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+  return m ? new Intl.DateTimeFormat(LOCALES[lang], { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(+m[1], +m[2] - 1, +m[3])) : '—';
+};
+const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const grainName = g => t(`grain-${GRAINS.includes(g) ? g : 'maiz'}`);
+const ticketLabel = r => r.ticket || t('no-ticket');
+
+/* ---------- State & storage ---------- */
+const STORE_KEY = 'agro-entregas-v1';
+let deliveries = [];
+let selectedId = null;
+let filter = 'all';
+let sort = 'date';
+const touched = new Set();
+let storageWarned = false;
+
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const toCents = arr => ({ kg: BigInt(arr[0]) * 100n, price: BigInt(arr[1]) * 100n, charges: BigInt(arr[2]) * 100n });
+function sampleDeliveries() {
+  const rows = [
+    ['DEMO / 001', '2026-01-12', 'trigo', [27000, 245000, 74000], [26650, 245000, 74000], true],
+    ['DEMO / 002', '2026-04-14', 'maiz', [30000, 280000, 85000], [29800, 278000, 95000], false],
+    ['DEMO / 003', '2026-04-16', 'maiz', [28500, 280000, 81000], [28500, 280000, 81000], false],
+    ['DEMO / 004', '2026-04-21', 'maiz', [30500, 280000, 86000], [30500, 281500, 86000], false],
+    ['DEMO / 005', '2026-05-05', 'soja', [31200, 420000, 112000], [31200, 420000, 148500], false],
+    ['DEMO / 006', '2026-05-07', 'soja', [29900, 420000, 108000], [30000, 418600, 108000], false],
+  ];
+  return rows.map(([ticket, date, grain, e, s, reviewed], i) => ({
+    id: `demo-${i + 1}`, ticket, date, grain, expected: toCents(e), settled: toCents(s), reviewed, note: reviewed ? t('sample-note') : '',
+  }));
+}
+const statusOf = r => compare(r.expected, r.settled).same ? 'match' : r.reviewed ? 'reviewed' : 'review';
+const current = () => deliveries.find(r => r.id === selectedId) || null;
+const cloneAll = list => list.map(r => ({ ...r, expected: { ...r.expected }, settled: { ...r.settled } }));
+
+function persist() {
+  const data = {
+    v: 1, lang, filter, sort, selected: selectedId,
+    deliveries: deliveries.map(r => ({
+      id: r.id, ticket: r.ticket, date: r.date, grain: r.grain, reviewed: r.reviewed, note: r.note,
+      e: FIELDS.map(k => r.expected[k].toString()), s: FIELDS.map(k => r.settled[k].toString()),
+    })),
+  };
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
+  catch { if (!storageWarned) { storageWarned = true; notify(t('n-storage')); } }
+}
+function loadState() {
+  let data = null;
+  try { data = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch { data = null; }
+  const urlLang = new URLSearchParams(location.search).get('lang');
+  lang = LANGS.includes(urlLang) ? urlLang : LANGS.includes(data?.lang) ? data.lang : 'es';
+  setFormatters();
+  if (data && Array.isArray(data.deliveries)) {
+    const ok = v => Array.isArray(v) && v.length === 3 && v.every(x => /^\d{1,12}$/.test(String(x)) && BigInt(x) <= MAX_CENTS);
+    deliveries = data.deliveries.filter(r => r && ok(r.e) && ok(r.s)).map(r => ({
+      id: String(r.id || newId()), ticket: String(r.ticket || '').slice(0, 40), date: /^\d{4}-\d{2}-\d{2}$/.test(r.date) ? r.date : '',
+      grain: GRAINS.includes(r.grain) ? r.grain : 'maiz', reviewed: !!r.reviewed, note: String(r.note || '').slice(0, 280),
+      expected: Object.fromEntries(FIELDS.map((k, i) => [k, BigInt(r.e[i])])), settled: Object.fromEntries(FIELDS.map((k, i) => [k, BigInt(r.s[i])])),
+    }));
+    filter = ['all', 'review', 'reviewed', 'match'].includes(data.filter) ? data.filter : 'all';
+    sort = data.sort === 'diff' ? 'diff' : 'date';
+    selectedId = deliveries.some(r => r.id === data.selected) ? data.selected : defaultSelection();
+  } else {
+    deliveries = sampleDeliveries();
+    selectedId = defaultSelection();
+  }
+}
+// Largest pending difference first: that is where a reviewer would start.
+function defaultSelection() {
+  const pending = deliveries.filter(r => statusOf(r) === 'review');
+  const pool = pending.length ? pending : deliveries;
+  let best = null, bestAbs = -1n;
+  for (const r of pool) { const a = abs(compare(r.expected, r.settled).delta); if (a > bestAbs) { best = r; bestAbs = a; } }
+  return best ? best.id : null;
+}
+
+/* ---------- DOM helpers ---------- */
+const el = id => document.getElementById(id);
+const text = (id, value) => { el(id).textContent = value; };
+const numId = (g, k) => `${g}-${k}`;
+const numInputs = () => GROUPS.flatMap(g => FIELDS.map(k => el(numId(g, k))));
+const esc = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function readForm() {
+  const d = { ticket: el('f-ticket').value.trim(), date: el('f-date').value, grain: el('f-grain').value };
+  for (const g of GROUPS) d[g] = Object.fromEntries(FIELDS.map(k => [k, parseCents(el(numId(g, k)).value)]));
+  return d;
+}
+const formComplete = d => GROUPS.every(g => FIELDS.every(k => d[g][k] !== null));
+function isDirty() {
+  const rec = current(), d = readForm();
+  if (!rec) return !!(d.ticket || numInputs().some(i => i.value.trim()));
+  return d.ticket !== rec.ticket || d.date !== rec.date || d.grain !== rec.grain
+    || GROUPS.some(g => FIELDS.some(k => d[g][k] === null || d[g][k] !== rec[g][k]));
+}
+function loadForm(rec) {
+  el('f-ticket').value = rec ? rec.ticket : '';
+  el('f-date').value = rec ? rec.date : todayISO();
+  el('f-grain').value = rec ? rec.grain : 'maiz';
+  for (const g of GROUPS) for (const k of FIELDS) el(numId(g, k)).value = rec ? inputText(rec[g][k]) : '';
+  el('review-note').value = rec ? rec.note : '';
+  touched.clear();
+  numInputs().forEach(i => i.removeAttribute('aria-invalid'));
+  el('delivery-error').hidden = true;
+  el('calc').open = false;
+}
+function validateField(input) {
+  const ok = parseCents(input.value) !== null;
+  if (touched.has(input.id) && !ok) input.setAttribute('aria-invalid', 'true');
+  else input.removeAttribute('aria-invalid');
+  el('delivery-error').hidden = !numInputs().some(i => i.getAttribute('aria-invalid') === 'true');
+  return ok;
+}
+
+/* ---------- Rendering ---------- */
+function applyStatic() {
+  document.documentElement.lang = lang;
+  document.title = t('doc-title');
+  document.querySelectorAll('[data-i18n]').forEach(n => { n.textContent = t(n.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(n => { n.placeholder = t(n.dataset.i18nPh); });
+  document.querySelectorAll('[data-i18n-aria]').forEach(n => n.setAttribute('aria-label', t(n.dataset.i18nAria)));
+  document.querySelectorAll('[data-lang]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
+  const grain = el('f-grain'), keep = grain.value || 'maiz';
+  grain.innerHTML = GRAINS.map(g => `<option value="${g}">${esc(grainName(g))}</option>`).join('');
+  grain.value = keep;
+  el('sort').value = sort;
+}
+
+function renderSummary() {
+  let expected = 0n, settled = 0n, delta = 0n, pending = 0n, below = 0n, above = 0n, pendingN = 0, diffN = 0, reviewedN = 0;
+  const effect = { kg: 0n, price: 0n, charges: 0n };
+  for (const r of deliveries) {
+    const c = compare(r.expected, r.settled);
+    expected += c.expectedNet; settled += c.settledNet; delta += c.delta;
+    for (const k of FIELDS) effect[k] += c.effect[k];
+    if (c.same) continue;
+    diffN++;
+    if (r.reviewed) { reviewedN++; continue; }
+    pendingN++; pending += abs(c.delta);
+    if (c.delta < 0n) below -= c.delta; else above += c.delta;
+  }
+  const n = deliveries.length;
+  text('summary-count', [t('count-deliveries', { n }), t('count-diff', { n: diffN }), t('count-reviewed', { n: reviewedN })].join(' · '));
+  text('kpi-review', money(pending));
+  const sub = pendingN ? [t('kpi-pending', { n: pendingN })] : [t('kpi-none')];
+  if (below) sub.push(t('kpi-below', { v: money(below) }));
+  if (above) sub.push(t('kpi-above', { v: money(above) }));
+  text('kpi-review-sub', sub.join(' · '));
+  text('kpi-delta', money(delta, true));
+  el('kpi-delta').classList.toggle('neg', delta < 0n);
+  text('kpi-expected', money(expected));
+  text('kpi-settled', money(settled));
+  for (const k of FIELDS) {
+    text(`sum-effect-${k}`, money(effect[k], true));
+    el(`sum-effect-${k}`).classList.toggle('neg', effect[k] < 0n);
+  }
+}
+
+function renderRegister() {
+  const rows = deliveries.map(r => ({ r, c: compare(r.expected, r.settled), s: statusOf(r) }));
+  const counts = { all: rows.length, review: 0, reviewed: 0, match: 0 };
+  rows.forEach(x => counts[x.s]++);
+  for (const k in counts) text(`count-${k}`, counts[k]);
+  document.querySelectorAll('[data-filter]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.filter === filter)));
+  const cmp = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+  const visible = rows.filter(x => filter === 'all' || x.s === filter).sort((a, b) =>
+    sort === 'diff' ? cmp(abs(b.c.delta), abs(a.c.delta)) || cmp(a.r.date, b.r.date) : cmp(a.r.date || '9', b.r.date || '9') || cmp(a.r.ticket, b.r.ticket));
+  el('rows').innerHTML = visible.map(({ r, c, s }) => `
+<tr data-id="${esc(r.id)}"${r.id === selectedId ? ' aria-current="true"' : ''}>
+<td><button type="button" class="row-link">${esc(ticketLabel(r))}</button><span class="row-sub">${esc(grainName(r.grain))} · ${esc(fmtDate(r.date))}</span></td>
+<td class="num hide-sm">${amount(c.expectedNet)}</td>
+<td class="num hide-sm">${amount(c.settledNet)}</td>
+<td class="num${c.delta < 0n ? ' neg' : ''}">${c.delta === 0n ? (c.same ? '—' : '0' + decSep + '00') : amount(c.delta, true)}</td>
+<td><span class="pill pill-${s}">${esc(t(`status-${s}`))}</span>${s === 'reviewed' && r.note ? `<span class="row-note" title="${esc(r.note)}">${esc(r.note)}</span>` : ''}</td>
+</tr>`).join('');
+  el('register-empty').hidden = visible.length > 0;
+  text('register-empty', rows.length ? t('filter-empty') : t('register-empty'));
+  el('export').disabled = !rows.length;
+}
+
+function renderForm() {
+  const rec = current(), dirty = isDirty();
+  text('form-kicker', rec ? t('form-edit-kicker') : t('form-new-kicker'));
+  text('form-title', rec ? `${ticketLabel(rec)} · ${grainName(rec.grain)}` : t('form-new-title'));
+  text('form-state', dirty ? t('state-unsaved') : rec ? t('state-saved') : '');
+  text('save', rec ? t('save-edit') : t('save-new'));
+  el('save').disabled = !!rec && !dirty;
+  el('discard').hidden = !dirty;
+  el('delete').hidden = !rec;
+}
+
+function renderResult() {
+  const rec = current(), d = readForm(), dirty = isDirty(), ok = formComplete(d);
+  el('delivery-results').hidden = !ok;
+  el('delivery-empty').hidden = ok;
+  text('result-ticket', d.ticket || (rec ? ticketLabel(rec) : ''));
+  if (!ok) return;
+  const c = compare(d.expected, d.settled);
+  text('delivery-summary-label', t(c.same ? 'ag-match' : 'ag-review'));
+  text('delivery-amount', money(abs(c.delta)));
+  text('delivery-direction', t(c.same ? 'ag-match-desc' : c.delta === 0n ? 'ag-offset' : c.delta < 0n ? 'ag-below' : 'ag-above'));
+  for (const k of FIELDS) {
+    const diff = c.diff[k];
+    text(`diff-${k}`, diff === 0n ? t('ag-same') : `${sign(diff, true)}${qty(abs(diff))} ${UNITS[k]}`);
+    text(`effect-${k}`, diff === 0n ? '—' : money(c.effect[k], true));
+    el(`effect-${k}`).classList.toggle('neg', c.effect[k] < 0n);
+    el(`formula-${k}`).hidden = diff === 0n;
+  }
+  text('effect-total', money(c.delta, true));
+  el('effect-total').classList.toggle('neg', c.delta < 0n);
+  text('net-expected', money(c.expectedNet));
+  text('net-settled', money(c.settledNet));
+  const e = d.expected, s = d.settled, th = nfInt.format(1000n);
+  text('formula-expected', `${t('f-expected')}: ${qty(e.kg)} kg ÷ ${th} × ${money(e.price)}/t − ${money(e.charges)} = ${money(c.expectedNet)}`);
+  text('formula-settled', `${t('f-settled')}: ${qty(s.kg)} kg ÷ ${th} × ${money(s.price)}/t − ${money(s.charges)} = ${money(c.settledNet)}`);
+  text('formula-delta', `${t('ag-net-delta')}: ${money(c.settledNet)} − ${money(c.expectedNet)} = ${money(c.delta, true)}`);
+  text('formula-kg', `${t('ag-kg')}: (${qty(s.kg)} − ${qty(e.kg)}) kg ÷ ${th} × ${money(e.price)}/t = ${money(c.effect.kg, true)}`);
+  text('formula-price', `${t('ag-price')}: ${qty(s.kg)} kg ÷ ${th} × (${money(s.price)} − ${money(e.price)})/t = ${money(c.effect.price, true)}`);
+  text('formula-charges', `${t('ag-charges')}: −(${money(s.charges)} − ${money(e.charges)}) = ${money(c.effect.charges, true)}`);
+  // Review block: only meaningful when something differs, and only on a saved, unchanged record.
+  el('review').hidden = c.same;
+  if (c.same) return;
+  const live = !!rec && !dirty, reviewed = live && rec.reviewed;
+  el('review-pill').className = `pill pill-${reviewed ? 'reviewed' : 'review'}`;
+  text('review-pill', t(reviewed ? 'status-reviewed' : 'status-review'));
+  el('review-note').disabled = !live;
+  el('review-toggle').disabled = !live;
+  text('review-toggle', t(reviewed ? 'review-unmark' : 'review-mark'));
+  text('review-hint', !rec ? t('review-hint-new') : dirty ? t('review-hint-dirty') : t(reviewed ? 'review-hint-done' : 'review-hint-pending'));
+}
+
+function renderAll() { renderSummary(); renderRegister(); renderForm(); renderResult(); }
+
+/* ---------- Notices with undo ---------- */
+let noticeTimer = null, undoFn = null;
+function notify(message, undo = null) {
+  undoFn = undo;
+  text('notice-text', message);
+  text('announce', message);
+  el('undo').hidden = !undo;
+  el('notice').hidden = false;
+  clearTimeout(noticeTimer);
+  noticeTimer = setTimeout(() => { el('notice').hidden = true; undoFn = null; }, undo ? 10000 : 5000);
+}
+function withUndo(message) {
+  const snapshot = cloneAll(deliveries), prevSelected = selectedId;
+  return () => notify(message, () => {
+    deliveries = snapshot; selectedId = prevSelected;
+    loadForm(current()); persist(); renderAll();
+    el('notice').hidden = true;
+  });
+}
+
+/* ---------- Actions ---------- */
+const leaveDraft = () => !isDirty() || confirm(t('confirm-discard'));
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+function reveal(node) {
+  const top = node.getBoundingClientRect().top;
+  if (top < 0 || top > innerHeight * 0.45) node.scrollIntoView({ block: 'start', behavior: reduceMotion() ? 'auto' : 'smooth' });
+}
+function select(id) {
+  selectedId = id;
+  loadForm(current());
+  persist();
+  renderAll();
+}
+
+el('rows').addEventListener('click', event => {
+  const tr = event.target.closest('tr[data-id]');
+  if (!tr) return;
+  if (tr.dataset.id !== selectedId) { if (!leaveDraft()) return; select(tr.dataset.id); }
+  reveal(el('workspace'));
+});
+
+el('new-delivery').addEventListener('click', () => {
+  if (current() || isDirty()) { if (!leaveDraft()) return; select(null); }
+  reveal(el('workspace'));
+  el('f-ticket').focus({ preventScroll: true });
+});
+
+document.querySelectorAll('[data-filter]').forEach(b => b.addEventListener('click', () => { filter = b.dataset.filter; persist(); renderRegister(); }));
+el('sort').addEventListener('change', () => { sort = el('sort').value; persist(); renderRegister(); });
+
+document.querySelectorAll('[data-lang]').forEach(b => b.addEventListener('click', () => {
+  if (b.dataset.lang === lang) return;
+  lang = b.dataset.lang;
+  setFormatters();
+  // Re-show every valid amount in the new locale's format (parsing is locale independent).
+  numInputs().forEach(i => { const c = parseCents(i.value); if (c !== null) i.value = inputText(c); });
+  applyStatic(); persist(); renderAll();
+}));
+
+const form = el('delivery-form');
+form.addEventListener('input', event => {
+  if (event.target.classList.contains('amount')) validateField(event.target);
+  renderForm(); renderResult();
+});
+form.addEventListener('change', () => { renderForm(); renderResult(); });
+// Leaving a field shows how the amount was read. Empty fields are only flagged on save.
+numInputs().forEach(input => input.addEventListener('blur', () => {
+  if (!input.value.trim()) return;
+  touched.add(input.id);
+  const c = parseCents(input.value);
+  if (c !== null) input.value = inputText(c);
+  validateField(input);
+}));
+
+el('copy-expected').addEventListener('click', () => {
+  for (const k of FIELDS) {
+    const c = parseCents(el(numId('expected', k)).value);
+    if (c !== null) { el(numId('settled', k)).value = inputText(c); el(numId('settled', k)).removeAttribute('aria-invalid'); }
+  }
+  el('delivery-error').hidden = !numInputs().some(i => i.getAttribute('aria-invalid') === 'true');
+  renderForm(); renderResult();
+});
+
+form.addEventListener('submit', event => {
+  event.preventDefault();
+  numInputs().forEach(i => { touched.add(i.id); validateField(i); });
+  const invalid = numInputs().filter(i => i.getAttribute('aria-invalid') === 'true');
+  if (invalid.length) { invalid[0].focus(); return; }
+  const d = readForm();
+  let rec = current(), message;
+  if (rec) {
+    const changed = GROUPS.some(g => FIELDS.some(k => d[g][k] !== rec[g][k]));
+    Object.assign(rec, { ticket: d.ticket, date: d.date, grain: d.grain, expected: d.expected, settled: d.settled });
+    message = changed && rec.reviewed ? 'n-review-reset' : 'n-updated';
+    if (changed) rec.reviewed = false;
+  } else {
+    rec = { id: newId(), ticket: d.ticket, date: d.date, grain: d.grain, expected: d.expected, settled: d.settled, reviewed: false, note: el('review-note').value.trim() };
+    deliveries.push(rec);
+    selectedId = rec.id;
+    message = 'n-saved';
+  }
+  if (filter !== 'all' && statusOf(rec) !== filter) filter = 'all';
+  loadForm(rec); persist(); renderAll();
+  notify(t(message));
+});
+
+el('discard').addEventListener('click', () => { loadForm(current()); renderAll(); });
+
+el('delete').addEventListener('click', () => {
+  const rec = current();
+  if (!rec) return;
+  const done = withUndo(t('n-deleted'));
+  deliveries = deliveries.filter(r => r !== rec);
+  select(null);
+  done();
+});
+
+el('restore').addEventListener('click', () => {
+  if (!leaveDraft()) return;
+  const done = withUndo(t('n-restored'));
+  deliveries = sampleDeliveries();
+  filter = 'all';
+  select(defaultSelection());
+  done();
+});
+
+el('clear').addEventListener('click', () => {
+  if (!deliveries.length || !leaveDraft()) return;
+  const done = withUndo(t('n-cleared'));
+  deliveries = [];
+  select(null);
+  done();
+});
+
+el('undo').addEventListener('click', () => { if (undoFn) undoFn(); });
+
+el('review-toggle').addEventListener('click', () => {
+  const rec = current();
+  if (!rec || isDirty()) return;
+  rec.reviewed = !rec.reviewed;
+  rec.note = el('review-note').value.trim();
+  persist(); renderAll();
+  notify(t(rec.reviewed ? 'n-reviewed' : 'n-pending'));
+});
+el('review-note').addEventListener('input', () => {
+  const rec = current();
+  if (!rec || isDirty()) return;
+  rec.note = el('review-note').value.slice(0, 280);
+  persist(); renderRegister();
+});
+
+el('export').addEventListener('click', () => {
+  const dec = lang === 'en' ? '.' : ',';
+  // Plain numbers for spreadsheets: no grouping, two decimals, ASCII minus.
+  const num = c => `${c < 0n ? '-' : ''}${abs(c) / 100n}${dec}${String(abs(c) % 100n).padStart(2, '0')}`;
+  // Keep free text from being read as a spreadsheet formula.
+  const txt = s => /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+  const cell = v => /[";\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+  const lines = [t('csv-head').split('|')];
+  for (const r of deliveries) {
+    const c = compare(r.expected, r.settled);
+    lines.push([txt(r.ticket), r.date, grainName(r.grain),
+      num(r.expected.kg), num(r.expected.price), num(r.expected.charges), num(c.expectedNet),
+      num(r.settled.kg), num(r.settled.price), num(r.settled.charges), num(c.settledNet),
+      num(c.delta), num(c.effect.kg), num(c.effect.price), num(c.effect.charges),
+      t(`status-${statusOf(r)}`), txt(r.note)]);
+  }
+  const csv = '﻿' + lines.map(row => row.map(v => cell(String(v))).join(';')).join('\r\n');
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = `${t('csv-file')}-${todayISO()}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+
+/* ---------- Boot ---------- */
+loadState();
+applyStatic();
+loadForm(current());
+renderAll();
+</script>
+</body>
+</html>
